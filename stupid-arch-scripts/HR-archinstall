@@ -35,10 +35,61 @@ pick_keymap()
 easy_diskprep()
 {
 	
+	
+	fdisk -l | less
+	printf "Enter disk choice(fullname e.g. '/dev/disk': "
+	verify_choice
+	
+	if [[ $choice_one == **"nvme"** ]]
+	then
+		s1="p1"
+		s2="p2"
+		s3="p3"
+	else
+		s1=1
+		s2=2
+		s3=3
+	fi
+	
+	sgdisk -z $choice_one
+	sgdisk -g -n 1:0:+150M $choice_one -t 1:ef00
+	next=`sgdisk -F $choice_one`
+	sgdisk -n 2:$next:+1G $choice_one -t 2:8300
+	last=`sgdisk -E $choice_one`
+	next=`sgdisk -F $choice_one`
+	sgdisk -n 3:$next:$last $choice_one -t 3:8300
+	echo "Partitioning done, now to setup encryption.."
+	echo "Root:"
+	cryptsetup luksFormat choice_one$s3
+	echo "Boot:"
+	cryptsetup luksFormat --type luks1 choice_one$s2
+	printf "Enter node name for root partition: "
+	read rootnodename
+	echo "opening"
+	cryptsetup open $choice_one$s3 $rootnodename
+	printf "Enter node name for boot partition: "
+	read bootnodename
+	echo "opening..."
+	cryptsetup open $choice_one$s2 $bootnodename
+	echo "Formating and mounting.."
+	mkfs.ext4 /dev/mapper/$bootnodename
+	mkfs.ext4 /dev/mapper/$rootnodename
+	mkfs.fat -F 16 $choice_one$s1
+	mount /dev/mapper/$rootnodename /mnt
+	mkdir -p /mnt/boot
+	mount /dev/mapper/$bootnodename /mnt/boot
+	mkdir -p /mnt/boot/efi
+	mount $choice_one$s1 /mnt/boot/efi
+	dd bs=512 count=4 if=/dev/random of=/mnt/boot/bootkey.keyfile iflag=fullblock
+	dd bs=512 count=4 if=/dev/random of=/mnt/boot/rootkey.keyfile iflag=fullblock
+	cryptsetup -v luksAddKey /dev/$choice_one$s2 /mnt/boot/bootkey.keyfile
+	cryptsetup -v luksAddKey /dev/$choice_one$s3 /mnt/boot/rootkey.keyfile
+	
 }
 
 connect-interwebz()
 {
+	
 }
 
 timez_setz()
