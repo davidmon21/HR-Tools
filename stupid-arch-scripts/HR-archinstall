@@ -1,0 +1,66 @@
+#!/bin/bash
+#include install_functions
+if [ ! $1 == '-n' ]
+then
+	if [ ( -f 'succ' ) || ( ! $1 == '-r' ) ]
+	then
+		if [ -f 'mandiskenc' ]
+		then
+			echo "Assuming disk is fully partitioned and mounted."
+			sleep 2
+		else
+			printf("Automated fulldisk encryption for EFI systems? (y/N): ")
+			read $d
+			if [ $d = 'y']
+			then
+				easy_diskprep
+			else
+				touch mandiskenc
+				exit 1
+			fi
+		fi
+		
+		connect-interwebz
+		
+		printf("Press x to skip keymap selection(default US): ")
+		choice_one $x
+		
+		if [ ! choice_one == 'x' ] ; then
+			pick_keymap
+		fi
+		
+		timedatectl set-ntp true
+		
+		strap()
+		{
+			pacstrap /mnt base
+		}
+		strap
+		while [ ! $? == 0 ]; do ; strap ; done
+		
+		genfstab -o > /mnt/etc/fstab
+		if [ $? == 0 ]
+		then
+			touch /mnt/succ
+		else
+			echo "There seems to be a problem, fix it then run ./recovery"
+			exit 1
+		fi
+		cp -u HR-archinstall /mnt/HR-archinstall
+	else
+		if [ $1 = '-r' ]
+			touch /mnt/succ
+			cp -u HR-archinstall /mnt/HR-archinstall
+		fi
+		archchroot /mnt /bin/bash -c /HR-archinstall -n
+	fi
+else
+	pacman -S ${cat pkglist.txt}
+	printf("Enter main user/admin user name: "
+	read user
+	useradd -m -G wheel -s /bin/bash $user
+	passwd $user
+	sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
+fi
+	
+

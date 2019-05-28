@@ -1,0 +1,37 @@
+#!/bin/bash
+#functions
+
+#variables
+$choice_one=0
+$choice_two=0
+
+grap_choice()
+{
+	echo "Please enter it twice to ensure validity:"
+	printf("once:")
+	read $choice_one
+	printf("twice:")
+	read $choice_two
+}
+
+verify_choice()
+{
+	while [ $choice_one -ne $choice_two ]; do
+		grab_choice
+	done
+}
+
+pick_keymap()
+{
+	if [ $x -ne 'x' ] ; then
+		ls /usr/share/kbd/keymaps/**/*.map.gz | less
+		grab_choice
+		verify_choice
+	fi
+	
+	loadkeys $choice_one
+}
+
+easy_diskprep()
+{
+	

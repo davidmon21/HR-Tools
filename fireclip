@@ -55,6 +55,9 @@ else
             dis=${ops[$2]}
             do_work
         ;;
+        -f|--file)
+			xclip -display ${ops[$2]} -selection CLIPBOARD -i < $3
+        ;;
         -x|--xsetoff)
             DISPLAY=${ops[$3]} xset $2 off
     esac

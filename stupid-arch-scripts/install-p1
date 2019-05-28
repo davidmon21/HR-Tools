@@ -1,20 +1,45 @@
-printf("Press x to skip keymap selection(default US): ")
-choice $x
-if [ $x -ne 'x' ] ; then
-	ls /usr/share/kbd/keymaps/**/*.map.gz | less
-	
-	choice $choice1
-	choice $choice2
-	
-	while [ $choice1 -ne $choice2 ]; do
-		choice $choice1
-		choice $choice2
-	done
-	
-	loadkeys $choice1
+#!/bin/bash
+#include install_functions
+
+if [ -f 'mandiskenc' ]
+then
+	echo "Assuming disk is fully partitioned and mounted."
+	sleep 2
+else
+	printf("Automated fulldisk encryption for EFI systems? (y/N): ")
+	choice $d
+	if [ $d = 'y']
+	then
+		easy_diskprep
+	else
+		touch mandiskenc
+		exit 1
+	fi
 fi
 
-	timedatectl set-ntp true
-pacstrap /mnt base
-genfstab 
+printf("Press x to skip keymap selection(default US): ")
+choice_one $x
+
+if [ choice_one -ne 'x' ] ; then
+	pick_keymap
+fi
+
+timedatectl set-ntp true
+
+strap()
+{
+	pacstrap /mnt base
+}
+strap
+while [ $? -ne 0 ] do ; strap ; done
+
+genfstab -o > /mnt/etc/fstab
+if [ $? -eq 0 ]
+then
+	touch /mnt/succ
+else
+	echo "There seems to have been a problem with with generation fstab. Manually create an fstab, or inspect output for issues the run: touch /mnt/succ ; arch-chroot /mnt /bin/bash "
+	exit 1
+fi
+cp -
 archchroot /mnt /bin/bash
