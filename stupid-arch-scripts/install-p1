@@ -1,0 +1,20 @@
+printf("Press x to skip keymap selection(default US): ")
+choice $x
+if [ $x -ne 'x' ] ; then
+	ls /usr/share/kbd/keymaps/**/*.map.gz | less
+	
+	choice $choice1
+	choice $choice2
+	
+	while [ $choice1 -ne $choice2 ]; do
+		choice $choice1
+		choice $choice2
+	done
+	
+	loadkeys $choice1
+fi
+
+	timedatectl set-ntp true
+pacstrap /mnt base
+genfstab 
+archchroot /mnt /bin/bash

@@ -1,0 +1,7 @@
+#!/bin/bash
+git clone https://aur.archlinux.org/yay.git
+cd ./yay
+makepkg -si
+yay -S --needed weechat-python3-git soulseekqt palemoon-bin libolm heimdall android-studio ttf-google-fonts-git zeronet pybitmessage dashcore clamav-unofficial-sigs syncterm pulseaudio-ctl timeshift
+rm -rf ./yay
+

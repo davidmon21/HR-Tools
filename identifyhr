@@ -1,0 +1,51 @@
+#!/bin/python3
+import os
+import random
+from datetime import datetime, timedelta
+import re
+import random
+
+datapath = os.path.join(os.path.dirname(os.path.realpath(__file__)),"identData")
+
+def generate_bday(ageRange):
+    age = (random.randint(int(ageRange[0]),int(ageRange[1])) * 31536000)
+    age-=random.randint(-15718000,15718000)
+    return datetime.today() - timedelta(seconds=age)
+
+def generate_handle(pool):
+    with open(os.path.join(datapath,'handle-'+pool[0]+'.list')) as f:
+        handlex = f.read().split(" ")
+    return str(random.choice(handlex)+random.choice(handlex))
+
+def generate_name(sex):
+    if (re.compile("(w|f)+", re.IGNORECASE)).match(sex[0]) != None:
+        with open(os.path.join(datapath,'femalefirst.list')) as f:
+            firstname = f.read().splitlines()
+    else:
+        with open(os.path.join(datapath,'malefirst.list')) as f:
+            firstname = f.read().splitlines()
+    with open(os.path.join(datapath,'lastname.list')) as l:
+        return str(random.choice(firstname)+" "+random.choice(l.read().splitlines()))
+
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Generate some bullshit!')
+    parser.add_argument("--name", "-n", help='Generate a name', action='store_true')
+    parser.add_argument("--age", "-a", help='Generate random age from range. --age min max', nargs=2, default=None)
+    parser.add_argument("--sex", "-s", help='Generate female name', nargs=1 ,default=["male"])
+    parser.add_argument("--handle", "--nym", help='Generate a handle', action='store_true')
+    parser.add_argument("--pool", "-p", help='Handle generation word pool.', nargs=1, default=["hacker"])
+    args = parser.parse_args()
+    
+    if args.handle: 
+        nym = generate_handle(args.pool)
+        print("Here's your psuedonym:\n        ",nym, "\n")
+    
+    if args.name:
+        name = generate_name(args.sex)
+        print("Here's a random name:\n        ",name.title(),"\n") 
+    
+    if args.age != None:
+        bday = generate_bday(args.age)
+        print("Here's a random age:\n        ",bday.isoformat(timespec='seconds'),"\n")
+    

@@ -1,0 +1,214 @@
+mkdir -p ~/.neomutt/i2p.mail.no/Mail/Inbox/{cur,new,tmp}
+mkdir -p ~/.neomutt/i2p.mail.no/Mail/Sent/{cur,new,tmp}
+mkdir -p ~/.neomutt/i2p.mail.no/Mail/Drafts/{cur,new,tmp}
+
+.neomutt/account.com.gmail.no
+================================
+#flush mail boxes for sidebar
+unmailboxes *
+
+#reset tls/ssl for clearnet emails
+set ssl_force_tls = yes
+
+#set user info
+set realname = "no"
+set from = "no@gmail.com"
+set use_from = yes
+set envelope_from = yes
+
+#reset send mail
+set sendmail="/usr/bin/msmtp"
+
+set smtp_url = "smtps://no@gmail.com@smtp.gmail.com:465/"
+set smtp_pass = "no<gotta turn on 2 factor and get app pass/key>"
+
+#imap duh
+set imap_user = "no@gmail.com"
+set imap_pass = "no<gotta turn on 2 factor and get app pass/key>"
+
+#virtual folders and spool folders
+set folder = "imaps://imap.gmail.com:993"
+set spoolfile = "+INBOX"
+set record="+[Gmail]/Sent Mail"
+set postponed="+[Gmail]/Drafts"
+
+#cache and headers
+set header_cache = ~/.neomutt/com.gmail.no/cache/headers            
+set message_cachedir = ~/.neomutt/com.gmail.no/cache/bodies
+
+#fast loading/0 wait cause gmail
+set sleep_time=0 # be faster
+set beep=no # no beep sound
+
+# When sorting by threads, this variable controls how threads are sorted
+# in relation to other threads, and how the branches of the thread trees are sorted.
+set sort=reverse-date   # default sorting by date
+mailboxes =INBOX =[Gmail]/Sent\ Mail =[Gmail]/Drafts =[Gmail]/Spam =[Gmail]/Trash
+set sort_aux=last-date-received
+set sidebar_format = "%B%?F? [%F]?%* %?N?%N/?%S"
+set mail_check_stats
+
+
+
+# G to get mail
+# bind index G imap-fetch-mail
+set editor = "nano"
+set charset = "utf-8"
+
+
+
+.neomutt/account.li.cock.no
+==============================================================
+unmailboxes *
+set realname = "StaffSilence"
+set from = "no@cock.li"
+set use_from = yes
+set envelope_from = yes
+
+#reset msmtp so it doesnt use account
+set sendmail="/usr/bin/msmtp"
+
+set smtp_url = "smtps://no@cock.li@mail.cock.li:465"
+set smtp_pass = "no"
+
+#imap
+set imap_user = "no@cock.li"
+set imap_pass = "no"
+#the built in imap uses server as base
+set folder = "imaps://mail.cock.li:993"
+
+set spoolfile = "+INBOX"
+set record="+[Cock]/Sent"
+set postponed="+[Cock]/Drafts"
+set ssl_force_tls = yes
+
+#cache and headers
+set header_cache = ~/.neomutt/li.cock.no/cache/headers            
+set message_cachedir = ~/.neomutt/li.cock.no/cache/bodies
+
+set beep=no # no beep sound
+set sort=reverse-date   # default sorting by date
+
+#set mail boxes
+mailboxes =INBOX =[Cock]/Sent =[Cock]/Drafts =[Cock]/Spam =[Cock]/Trash
+
+# When sorting by threads, this variable controls how threads are sorted
+# in relation to other threads, and how the branches of the thread trees are sorted.
+set sort_aux=last-date-received
+set sidebar_format = "%B%?F? [%F]?%* %?N?%N/?%S"
+set mail_check_stats
+
+# G to get mail
+#bind index G imap-fetch-mail
+set editor = "nano"
+set charset = "utf-8"
+
+
+.neomutt/account.i2p.mail.no
+==============================================================
+
+#clear variables set by clearnet mailboxes
+unset smtp_url
+unset smtp_pass
+unset from
+unset realname
+set envelope_from = no
+set ssl_force_tls = no
+
+#clear sidebar
+unmailboxes *
+
+#set to default account
+set sendmail="/usr/bin/msmtp -a i2p"
+set from = "no@mail.i2p"
+
+#set up mail boxes
+set mbox_type=maildir
+set mbox="~/.neomutt/i2p.mail.no/Mail/Inbox/"
+set folder = "~/.neomutt/i2p.mail.no"
+set record= "~/.neomutt/i2p.mail.no/Mail/Sent"
+set spoolfile = "~/.neomutt/i2p.mail.no/Mail/Inbox"
+set postponed = "~/.neomutt/i2p.mail.no/Mail/Drafts"
+
+
+set beep = no # no beep sound
+
+#reverse order makes more sense right, your new ones first
+set sort=reverse-date   # default sorting by date
+
+#set your mailboxes
+mailboxes =Mail/Inbox =Mail/Drafts =Mail/Sent
+
+# When sorting by threads, this variable controls how threads are sorted
+# in relation to other threads, and how the branches of the thread trees are sorted.
+set sort_aux=last-date-received
+set sidebar_format = "%B%?F? [%F]?%* %?N?%N/?%S"
+
+set mail_check_stats
+
+# G to get mail
+set editor = "nano"
+set charset = "utf-8"
+
+
+./.getmail/getmailrc 
+====================================================
+[retriever]
+type = SimplePOP3Retriever
+server = localhost
+port = 7660
+username = no
+password = no
+
+[destination]
+type = Maildir
+path = ~/.neomutt/i2p.mail.no/Mail/Inbox/
+
+[options]
+delete = true
+message_log = ~/.getmail/log
+
+.msmtprc
+==================================================================
+# Set default values for all following accounts.
+defaults
+auth           login
+tls            off
+logfile        ~/.msmtp.log
+
+# i2p
+account        i2p
+host           127.0.0.1
+port           7659
+from           no@mail.i2p
+user           no
+password       no
+
+# Set a default account
+account default : i2p
+
+.neomuttrc
+========================================================================
+# Folder hooks
+folder-hook 'account.li.cock.no' 'source ~/.neomutt/account.li.cock.no'
+folder-hook 'account.com.gmail.no' 'source ~/.neomutt/account.com.gmail.no'
+folder-hook 'account.i2p.mail.no' 'source ~/.neomutt/account.i2p.mail.no'
+
+
+# Default account
+source ~/.neomutt/account.li.cock.no
+
+
+# Macros for switching accounts
+macro index <f2> '<sync-mailbox><enter-command>source ~/.neomutt/account.li.cock.no<enter><change-folder>!<enter>'
+macro index <f3> '<sync-mailbox><enter-command>source ~/.neomutt/account.com.gmail.no<enter><change-folder>!<enter>'
+macro index <f4> '<shell-escape>getmail<enter><enter-command>source ~/.neomutt/account.i2p.mail.no<enter><change-folder>!<enter>'
+
+# Sidebar binds
+bind index,pager \CP sidebar-prev                 # Ctrl-n to select next folder
+bind index,pager \CN sidebar-next                 # Ctrl-p to select previous folder
+bind index,pager \CI sidebar-open                 # Ctrl-o to open selected folder
+bind index,pager \CB sidebar-toggle-visible # Ctrl-b to toggle visibility of the sidebar
+
+
+

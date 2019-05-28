@@ -1,0 +1,9 @@
+#!
+echo "Loading manipulator..."
+sleep .5
+echo "Executing manipulator on target..."
+sleep .25
+echo "locking on target..."
+sleep .25 
+echo "Target lock acheived: initiating manipulation"
+sleep 2 

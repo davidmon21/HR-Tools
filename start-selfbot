@@ -1,0 +1,5 @@
+#!/bin/bash
+docker run -i -u cat -e LC_ALL="en_US.UTF-8" -w /home/cat/Discord-Selfbot -t mouse/selfbot /home/cat/Discord-Selfbot/run_linuxmac.sh
+export COTAINER_ID='docker ps -lq'
+docker commit CONTAINER_ID mouse/selfbot
+docker container prune

@@ -1,0 +1,9 @@
+#!
+echo "Loading catifier..."
+sleep .5
+echo "Executing catification on target(s)..."
+sleep .25
+echo "locking on target(s)..."
+sleep .25 
+echo "Target(s) lock acheived: initiating catification"
+sleep 2 

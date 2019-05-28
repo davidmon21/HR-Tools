@@ -1,0 +1,61 @@
+#!/bin/bash
+
+print_jails(){
+    printf "Running X11 Jails:\n$RES\n"
+    
+    let len=${#ops[@]}-1
+    for each in `seq 0 $len`
+    do
+        echo $each ${ops[$each]}
+    done
+}
+
+do_work(){
+    if [ $grab == 1 ]
+    then
+        xclip -display $dis -selection CLIPBOARD -o | xclip -display :0 -selection CLIPBOARD -i
+    else
+        xclip -display :0 -selection CLIPBOARD -o | xclip -display $dis -selection CLIPBOARD -i
+    fi
+}
+
+IFS=$'
+'
+RES=`firemon --x11`
+declare -a ops=( `echo $RES| grep -o :[0-9][0-9][0-9]| awk '{ print $1 }'` )
+unset IFS
+
+if [[ -z $1 ]]; then
+    print_jails
+    printf "\nEnter a display: "
+    read choice
+
+    printf "\nGrab paste(g) or pass paste(e): "
+    read choice2
+    if [ $choice2 == 'g' ]
+    then
+        grab=1
+    else
+        grab=0
+    fi
+    dis=${ops[$choice]}
+    do_work
+else
+    case $1 in 
+        -l|--list)
+            print_jails
+        ;;
+        -g|--grab)
+            grab=1
+            dis=${ops[$2]}
+            do_work
+        ;;
+        -s|--send)
+            grab=0
+            dis=${ops[$2]}
+            do_work
+        ;;
+        -x|--xsetoff)
+            DISPLAY=${ops[$3]} xset $2 off
+    esac
+fi
