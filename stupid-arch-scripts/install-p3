@@ -1,3 +1,0 @@
-pacman -S $(cat pkglist.txt)
-useradd -G wheel -s /bin/bash -d /home/mouse mouse
-EDITOR=nano visudo

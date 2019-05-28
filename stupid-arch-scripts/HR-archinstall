@@ -1,66 +1,174 @@
 #!/bin/bash
-#include install_functions
-if [ ! $1 == '-n' ]
-then
-	if [ ( -f 'succ' ) || ( ! $1 == '-r' ) ]
+
+#basic functions
+#variables
+$choice_one=0
+$choice_two=0
+
+grap_choice()
+{
+	echo "Please enter it twice to ensure validity:"
+	printf "once: "
+	read $choice_one
+	printf "twice: " 
+	read $choice_two
+}
+
+verify_choice()
+{
+	while [ $choice_one -ne $choice_two ]; do
+		grab_choice
+	done
+}
+
+pick_keymap()
+{
+	if [ $x -ne 'x' ] ; then
+		ls /usr/share/kbd/keymaps/**/*.map.gz | less
+		grab_choice
+		verify_choice
+	fi
+	
+	loadkeys $choice_one
+}
+
+easy_diskprep()
+{
+	
+}
+
+connect-interwebz()
+{
+}
+
+timez_setz()
+{
+	ls /usr/share/zoneinfo/**/**
+	echo "Enter choice as Zone/SubZone"
+	grab_choice
+	ln -sf /usr/share/zoneinfo/$choice_one /etc/localtime
+	hwclock --systohc
+}
+
+setz_localez()
+{
+	printf "Default english-us locales(y/N)?"
+	read choice
+	if [ choice == 'y' ]
 	then
-		if [ -f 'mandiskenc' ]
+		echo "Editing locale.gen..."
+		sed -i '/en_US.UTF-8 UTF-8/s/^#//g' /etc/locale.gen
+		echo "Running locale-gen..."
+		locale-gen
+		echo "Creating locale.conf"
+		printf "LANG=en_US.UTF-8\nLC_COLLATE=C\nLC_TIME=en_US.UTF-8\n" > /etc/locale.conf
+	else
+		printf "edit locale.gen:"
+		read
+		nano /etc/locale.gen
+		echo "Running locale-gen..."
+		locale-gen
+		printf "edit locale.conf:"
+		read
+		nano /etc/locale.conf
+	fi
+}
+
+if [[ -z $1 ]]; then
+then
+	if [ -f 'mandiskenc' ]
+	then
+		echo "Assuming disk is fully partitioned and mounted."
+		sleep 2
+	else
+		printf("Automated fulldisk encryption for EFI systems? (y/N): ")
+		read $d
+		if [ $d = 'y']
 		then
-			echo "Assuming disk is fully partitioned and mounted."
-			sleep 2
+			easy_diskprep
 		else
-			printf("Automated fulldisk encryption for EFI systems? (y/N): ")
-			read $d
-			if [ $d = 'y']
-			then
-				easy_diskprep
-			else
-				touch mandiskenc
-				exit 1
-			fi
-		fi
-		
-		connect-interwebz
-		
-		printf("Press x to skip keymap selection(default US): ")
-		choice_one $x
-		
-		if [ ! choice_one == 'x' ] ; then
-			pick_keymap
-		fi
-		
-		timedatectl set-ntp true
-		
-		strap()
-		{
-			pacstrap /mnt base
-		}
-		strap
-		while [ ! $? == 0 ]; do ; strap ; done
-		
-		genfstab -o > /mnt/etc/fstab
-		if [ $? == 0 ]
-		then
-			touch /mnt/succ
-		else
-			echo "There seems to be a problem, fix it then run ./recovery"
+			touch mandiskenc
+			echo "Fully format and mount all drives under /mnt as per arch install guides instructions."
 			exit 1
 		fi
-		cp -u HR-archinstall /mnt/HR-archinstall
-	else
-		if [ $1 = '-r' ]
-			touch /mnt/succ
-			cp -u HR-archinstall /mnt/HR-archinstall
-		fi
-		archchroot /mnt /bin/bash -c /HR-archinstall -n
 	fi
+	
+	connect-interwebz
+	
+	printf("Press x to skip keymap selection(default US): ")
+	choice_one $x
+	
+	if [ ! choice_one == 'x' ] ; then
+		pick_keymap
+	fi
+	
+	timedatectl set-ntp true
+	
+	strap()
+	{
+		pacstrap /mnt base
+	}
+	strap
+	while [ ! $? == 0 ]; do ; strap ; done
+	
+	genfstab -o > /mnt/etc/fstab
+	if [ $? == 0 ]
+	then
+		touch /mnt/succ
+	else
+		echo "There seems to be a problem, fix it(or manually make fstab) then run -r"
+		exit 1
+	fi
+	cp -u HR-archinstall /mnt/HR-archinstall
+	archchroot /mnt /bin/bash -c /HR-archinstall -n
 else
-	pacman -S ${cat pkglist.txt}
-	printf("Enter main user/admin user name: "
-	read user
-	useradd -m -G wheel -s /bin/bash $user
-	passwd $user
-	sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
+case $1
+	-l|--list)
+		touch /mnt/succ
+		cp -u HR-archinstall /mnt/HR-archinstall
+		archchroot /mnt /bin/bash -c /HR-archinstall -n
+    ;;
+	-n|--next)
+		timez_setz
+		setz_localez
+		
+		echo "Edit hosts:"
+		read
+		nano /etc/hosts
+		echo "Edit hostname:"
+		read
+		nano /etc/hostname
+		
+		echo "Edit mkinitcpio.conf:"
+		nano /etc/mkinitcpio.conf
+		echo "Building kernel"
+		mkinitcpio -p linux
+		
+		echo "Set root password:"
+		passwd
+		
+		pacman -S grub efibootmgr
+		echo "Edit grub /etc/defaults:"
+		read
+		nano /etc/default/grub
+		
+		echo "Installing grub..."
+		grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+		grub-mkconfig -o /boot/grub/grub.cfg
+		
+	;;
+	-f|--finish)
+		pacman -S ${cat pkglist.txt}
+		printf "Enter main user/admin user name: "
+		read user
+		useradd -m -G wheel -s /bin/bash $user
+		passwd $user
+		sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
+	;;
+	-e|--extra)
+		
+	;;
+esac
 fi
 	
 
