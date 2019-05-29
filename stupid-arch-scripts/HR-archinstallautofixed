@@ -231,8 +231,15 @@ add_autostart_yay()
 			read -r xterm
 		fi
 		
+		mkdir /home/"$user"/HR-Tools
+		cp -u $scriptname *.services *.pkglist /home/"$user"/HR-Tools
+		chown -R "$user":"$user" /home/"$user"/HR-Tools
+		chmod +x /home/"$user"/HR-Tools/$scriptname
+		
 		mkdir -p /home/"$user"/.config/autostart
 		echo "$xterm -e ~/HR-Tools/$scriptname -y" > /home/"$user"/.config/autostart/finish 
+		chmod +x /home/"$user"/.config/autostart/finish
+		chown -R "$user":"$user" /home/"$user"/.config
 	fi
 }
 
