@@ -316,7 +316,8 @@ finish_install()
     fi
     
 	installdis="echo $(cat "$packagelist")"
-	pacman -S sudo "${ops[$vchoice]}" "$installdis" "$videoe"
+	pacman -Syuu
+	pacman -S --needed sudo "${ops[$vchoice]}" "$installdis" "$videoe"
 	servicedis="echo $(cat "$serviceslist")"
 	systemctl enable "$servicedis"
 	
@@ -410,7 +411,8 @@ case $1 in
 		echo "Enter any extra packages(space seperated) you would like to install(defaults are grub efibootmgr and cryptsetup if you used script to partition: "
 		read -r addeseential
 		eseential+=" $addeseential"
-		pacman -S grub efibootmgr "$eseential"
+		pacman -Syuu
+		pacman -S --needed grub efibootmgr "$eseential"
 		
 		grubber-work
 		
@@ -430,7 +432,8 @@ case $1 in
 		finish_install
 	;;
 	-y|--yay)
-		sudo pacman -S base-devel
+		sudo pacman -Syuu
+		sudo pacman -S --needed base-devel
 		git clone https://aur.archlinux.org/yay.git
 		cd ./yay || exit
 		makepkg -si
