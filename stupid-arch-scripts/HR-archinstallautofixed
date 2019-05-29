@@ -6,20 +6,20 @@ choice_one=0
 choice_two=0
 kmod=""
 videoe=""
-scriptname="HR-archinstall"
+scriptname="HR-archinstallautofixed"
 
 grap_choice()
 {
 	echo "Please enter it twice to ensure validity:"
 	printf "once: "
-	read choice_one
+	read -r choice_one
 	printf "twice: " 
-	read choice_two
+	read -r choice_two
 }
 
 verify_choice()
 {
-	while [ ! $choice_one == $choice_two ]; do
+	while [ ! "$choice_one" == "$choice_two" ]; do
 		grab_choice
 	done
 }
@@ -29,7 +29,7 @@ pick_keymap()
 	ls /usr/share/kbd/keymaps/**/*.map.gz | less
 	grab_choice
 	verify_choice
-	loadkeys $choice_one
+	loadkeys "$choice_one"
 }
 
 easy_diskprep()
@@ -48,38 +48,38 @@ easy_diskprep()
 		s2=2
 	fi
 	
-	sgdisk -z $choice_one
-	sgdisk -g -n 1:0:+150M $choice_one -t 1:ef00
-	last=`sgdisk -E $choice_one`
-	next=`sgdisk -F $choice_one`
-	sgdisk -n 2:$next:$last $choice_one -t 2:8300
+	sgdisk -z "$choice_one"
+	sgdisk -g -n 1:0:+150M "$choice_one" -t 1:ef00
+	last=$(sgdisk -E "$choice_one")
+	next=$(sgdisk -F "$choice_one")
+	sgdisk -n 2:"$next":"$last" "$choice_one" -t 2:8300
 	echo "Partitioning done, now to setup encryption.."
-	cryptsetup luksFormat --type luks1 $choice_one$s2
+	cryptsetup luksFormat --type luks1 "$choice_one"$s2
 	printf "Enter node name for partition: "
-	read rootnodename
+	read -r rootnodename
 	echo "opening..."
-	cryptsetup open $choice_one$s2 $rootnodename
+	cryptsetup open "$choice_one"$s2 "$rootnodename"
 	echo "Formating and mounting.."
-	mkfs.ext4 /dev/mapper/$rootnodename
-	mkfs.fat -F 16 $choice_one$s1
-	mount /dev/mapper/$rootnodename /mnt
+	mkfs.ext4 /dev/mapper/"$rootnodename"
+	mkfs.fat -F 16 "$choice_one"$s1
+	mount /dev/mapper/"$rootnodename" /mnt
 	mkdir -p /mnt/boot/efi
-	mount $choice_one$s1 /mnt/boot/efi
+	mount "$choice_one"$s1 /mnt/boot/efi
 	printf "Enter keyfile name(this is to avoid entering password twice): "
-	read keyname
-	dd bs=512 count=4 if=/dev/random of=/mnt/$keyname iflag=fullblock
-	cryptsetup -v luksAddKey /dev/$choice_one$s2 /mnt/$keyname
-	rootuuid=`blkid -o value $choice_one$s2`
-	echo $rootuuid > ss
-	echo $keyname > fbi
-	echo $rootnodename > zog
+	read -r keyname
+	dd bs=512 count=4 if=/dev/random of=/mnt/"$keyname" iflag=fullblock
+	cryptsetup -v luksAddKey /dev/"$choice_one"$s2 /mnt/"$keyname"
+	rootuuid=$(blkid -o value "$choice_one"$s2)
+	echo "$rootuuid" > ss
+	echo "$keyname" > fbi
+	echo "$rootnodename" > zog
 }
 
 connect-interwebz()
 {
 	printf "Time to connect to internet.\nWifi?(y/n): "
-	read ans
-	if [ $ans == 'y' ]
+	read -r ans
+	if [ "$ans" == 'y' ]
 	then
 		wifi-menu
 		dhcpcd
@@ -94,15 +94,15 @@ timez_setz()
 	ls /usr/share/zoneinfo/**/**
 	echo "Enter choice as Zone/SubZone"
 	grab_choice
-	ln -sf /usr/share/zoneinfo/$choice_one /etc/localtime
+	ln -sf /usr/share/zoneinfo/"$choice_one" /etc/localtime
 	hwclock --systohc
 }
 
 setz_localez()
 {
 	printf "Default english-us locales(y/N)?"
-	read choice
-	if [ $choice == 'y' ]
+	read -r choice
+	if [ "$choice" == 'y' ]
 	then
 		echo "Editing locale.gen..."
 		sed -i '/en_US.UTF-8 UTF-8/s/^#//g' /etc/locale.gen
@@ -124,8 +124,8 @@ setz_localez()
 
 auto_grub_edit()
 {
-	rootuuid=`cat ss`
-	rootnodename=`cat zog`
+	rootuuid=$(cat ss)
+	rootnodename=$(cat zog)
 	rm ss zog
     grubline="GRUB_CMDLINE_LINUX_DEFAULT=\"quiet cryptdevice=$rootuuid:$rootnodename root=/dev/mapper/$rootnodename resume=/dev/mapper/$rootnodename root efi=runtime\""
     sed -i 's,^GRUB_CMDLINE_LINUX_DEFAULT=.*,'"$grubline"',' /etc/default/grub
@@ -134,9 +134,9 @@ auto_grub_edit()
 
 auto_mkinit_edit()
 {
-	bootkeyfile=`cat fbi`
+	bootkeyfile=$(cat fbi)
 	rm fbi
-	mods="MODULES=(efivarfs $kmod)"
+	mods="MODULES=(efivarfs $videoe)"
 	filez="FILES=(/$bootkeyfile)"
 	hooky="HOOKS=(base udev autodetect modconf block keyboard keymap encrypt filesystems)"
 	sed -i 's,^MODULES=.*,'"$mods"',' /etc/mkinitcpio.conf
@@ -187,7 +187,7 @@ grubber_work()
 		auto_grub_edit
 	fi
 	printf "Edit grub defaults?(Y/n): "
-	read edit_grub
+	read -r edit_grub
 	if [ ! "$edit_grub" == 'n' ]
 	then
 		echo "Edit grub /etc/defaults:"
@@ -200,8 +200,8 @@ grubber_work()
 		grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
 	else
 		printf "Enter your desired grub-install parameters: "
-		read parameters
-		grub-install $parameters
+		read -r parameters
+		grub-install "$parameters"
 	fi
 	grub-mkconfig -o /boot/grub/grub.cfg
 }
@@ -209,9 +209,9 @@ grubber_work()
 add_admin_user()
 {
 	printf "Enter main user/admin user name: "
-	read user
-	useradd -m -G wheel -s /bin/bash $user
-	passwd $user
+	read -r user
+	useradd -m -G wheel -s /bin/bash "$user"
+	passwd "$user"
 	sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
 }
 
@@ -219,20 +219,20 @@ add_autostart_yay()
 {
 	xterm="xfce4-terminal"
 	printf "open xterm and install yay on start up?(y/n)"
-	read q
-	if [ $q == 'y' ]
+	read -r q
+	if [ "$q" == 'y' ]
 	then
 		printf "Default terminal is $xterm, enter a different xterm?(y/n)"
-		read q
+		read -r q
 		
-		if [ ! $q == 'n' ]
+		if [ ! "$q" == 'n' ]
 		then
 			printf "Enter terminal: "
-			read xterm
+			read -r xterm
 		fi
 		
-		mkdir -p /home/$user/.config/autostart
-		echo "$xterm -e ~/HR-Tools/$scriptname -y" > /home/$user/.config/autostart/finish 
+		mkdir -p /home/"$user"/.config/autostart
+		echo "$xterm -e ~/HR-Tools/$scriptname -y" > /home/"$user"/.config/autostart/finish 
 	fi
 }
 
@@ -258,10 +258,10 @@ finish_install()
 	#selection menu
 	echo "choose package sets"
 	ops=($(ls -d *.pkglist/))
-	let len=${#ops[@]}-1
-    for each in `seq 0 $len`
+	len=${#ops[@]}-1
+    for each in $(seq 0 $len)
     do
-        echo $each ${ops[$each]}
+        echo "$each" "${ops[$each]}"
     done
     printf "enter your choice: "
     read -a choices
@@ -271,7 +271,7 @@ finish_install()
     #pacakge selection and services selection
     for choice in "${choices[@]}";do 
 		packagelist+="${ops[$choice]} "
-		servicea="`echo cut -d'.' -f 1`"
+		servicea="$(echo cut -d'.' -f 1)"
 		servicea+=".services"
 		if [ -f $servicea ]
 		then
@@ -286,37 +286,39 @@ finish_install()
 	ops=($(pacman -Ss xf86-video | cut -f 1 -d " "))
 	IFS=" "
 	let len=${#ops[@]}-1
-    for each in `seq 0 $len`
+    for each in $(seq 0 $len)
     do
-        echo $each ${ops[$each]}
+        echo "$each" "${ops[$each]}"
     done
     printf "Enter video driver choice: "
-    read vchoice
+    read -r vchoice
     
     printf "Enable Kernel mode setting for driver?(y/N): "
-    read ang
-    if [ $ang == 'y' ]
+    read -r ang
+    if [ "$ang" == 'y' ]
     then
 	    videoe=""
 	    kmod=${ops[$vchoice]}
 	    kmod+=".kmod"
 	    if [ -f $kmod ]
 	    then
-			videoe=`cat $kmod`
+			videoe=$(cat $kmod)
 	    else
 			echo "$kmod doesnt exist, would you like to enter Modules variable manually for mkinitcpio.conf?(y/N)"
-			read anf
-			if [ $anf == 'y' ]
+			read -r anf
+			if [ "$anf" == 'y' ]
 			then
 				printf "Enter module name: "
-				read videoe
+				read -r videoe
 			fi
 		fi
+		auto_mkinit_edit
     fi
-	installdis="echo `cat $packagelist`"
-	pacman -S sudo ${ops[$vchoice]} $installdis $videoe
-	servicedis="echo `cat $serviceslist`"
-	systemctl enable $servicedis
+    
+	installdis="echo $(cat "$packagelist")"
+	pacman -S sudo "${ops[$vchoice]}" "$installdis" "$videoe"
+	servicedis="echo $(cat "$serviceslist")"
+	systemctl enable "$servicedis"
 	
 	echo "One last mkinitcpio edit and kernel build"
 	mkinit_edit
@@ -341,8 +343,8 @@ then
 		sleep 2
 	else
 		printf "Automated fulldisk encryption for EFI systems? (y/N): "
-		read d
-		if [ $d == 'y' ]
+		read -r d
+		if [ "$d" == 'y' ]
 		then
 			easy_diskprep
 		else
@@ -353,16 +355,16 @@ then
 	fi
 	
 	printf "Are you online?(y/n)"
-	read anz
-	if [ ! $anz == 'y' ]
+	read -r anz
+	if [ ! "$anz" == 'y' ]
 	then
 		connect-interwebz
 	fi
 	
 	printf "Press x to skip keymap selection(default US): "
-	read choice_one
+	read -r choice_one
 	
-	if [ ! $choice_one == 'x' ] ; then
+	if [ ! "$choice_one" == 'x' ] ; then
 		pick_keymap
 	fi
 	
@@ -388,13 +390,13 @@ case $1 in
 		setz_localez
 		
 		printf "Enter computer name:"
-		read compname
-		echo $compname > /etc/hosts
+		read -r compname
+		echo "$compname" > /etc/hosts
 		
 		eseential=""
 		printf "Did you use install script to partition?(y/n): "
-		read ans
-		if [ $ans == 'y' ]
+		read -r ans
+		if [ "$ans" == 'y' ]
 		then
 			auto_mkinit_edit
 			eseential="cryptsetup"
@@ -408,12 +410,12 @@ case $1 in
 		echo "Enter any extra packages(space seperated) you would like to install(defaults are grub efibootmgr and cryptsetup if you used script to partition: "
 		read -r addeseential
 		eseential+=" $addeseential"
-		pacman -S grub efibootmgr $eseential
+		pacman -S grub efibootmgr "$eseential"
 		
 		grubber-work
 		
 		printf "Would you like to stop at minimal and reboot into your install(y) or continue(n)?(y/n): "
-		read anf
+		read -r anf
 		if [ "$anf" == 'n' ]
 		then
 			finish_install
@@ -430,12 +432,10 @@ case $1 in
 	-y|--yay)
 		sudo pacman -S base-devel
 		git clone https://aur.archlinux.org/yay.git
-		cd ./yay
+		cd ./yay || exit
 		makepkg -si
 		cd ../
 		rm -rf ./yay
 	;;
 esac
 fi
-	
-
