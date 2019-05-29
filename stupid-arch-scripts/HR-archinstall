@@ -35,7 +35,6 @@ pick_keymap()
 easy_diskprep()
 {
 	
-	
 	fdisk -l | less
 	printf "Enter disk choice(fullname e.g. '/dev/disk': "
 	verify_choice
@@ -53,43 +52,43 @@ easy_diskprep()
 	
 	sgdisk -z $choice_one
 	sgdisk -g -n 1:0:+150M $choice_one -t 1:ef00
-	next=`sgdisk -F $choice_one`
-	sgdisk -n 2:$next:+1G $choice_one -t 2:8300
 	last=`sgdisk -E $choice_one`
 	next=`sgdisk -F $choice_one`
-	sgdisk -n 3:$next:$last $choice_one -t 3:8300
+	sgdisk -n 2:$next:$last $choice_one -t 2:8300
 	echo "Partitioning done, now to setup encryption.."
-	echo "Root:"
-	cryptsetup luksFormat choice_one$s3
-	echo "Boot:"
 	cryptsetup luksFormat --type luks1 choice_one$s2
-	printf "Enter node name for root partition: "
+	printf "Enter node name for partition: "
 	read rootnodename
-	echo "opening"
-	cryptsetup open $choice_one$s3 $rootnodename
-	printf "Enter node name for boot partition: "
-	read bootnodename
 	echo "opening..."
-	cryptsetup open $choice_one$s2 $bootnodename
+	cryptsetup open $choice_one$s2 $rootnodename
 	echo "Formating and mounting.."
-	mkfs.ext4 /dev/mapper/$bootnodename
 	mkfs.ext4 /dev/mapper/$rootnodename
 	mkfs.fat -F 16 $choice_one$s1
 	mount /dev/mapper/$rootnodename /mnt
-	mkdir -p /mnt/boot
-	mount /dev/mapper/$bootnodename /mnt/boot
 	mkdir -p /mnt/boot/efi
 	mount $choice_one$s1 /mnt/boot/efi
-	dd bs=512 count=4 if=/dev/random of=/mnt/boot/bootkey.keyfile iflag=fullblock
-	dd bs=512 count=4 if=/dev/random of=/mnt/boot/rootkey.keyfile iflag=fullblock
-	cryptsetup -v luksAddKey /dev/$choice_one$s2 /mnt/boot/bootkey.keyfile
-	cryptsetup -v luksAddKey /dev/$choice_one$s3 /mnt/boot/rootkey.keyfile
-	
+	printf "Enter keyfile name(this is to avoid entering password twice): "
+	read $keyname
+	dd bs=512 count=4 if=/dev/random of=/mnt/$keyname iflag=fullblock
+	cryptsetup -v luksAddKey /dev/$choice_one$s2 /mnt/$keyname
+	rootuuid=`blkid -o value $choice_one$s2`
+	echo $rootuuid > ss
+	echo $keyname > fbi
+	echo $rootnodename > zog
 }
 
 connect-interwebz()
 {
-	
+	printf "Time to connect to internet.\nWifi?(y/n): "
+	read ans
+	if [ ans == 'y' ]
+	then
+		wifi-menu
+		dhcpcd
+	else
+		dhcpcd
+	fi
+	echo "Hopfully that worked..."
 }
 
 timez_setz()
@@ -125,6 +124,37 @@ setz_localez()
 	fi
 }
 
+auto_grub_edit()
+{
+	rootuuid=`cat ss`
+	rootnodename=`cat zog`
+    grubline="GRUB_CMDLINE_LINUX_DEFAULT=\"quiet cryptdevice=$rootuuid:$rootnodename root=/dev/mapper/$rootnodename resume=/dev/mapper/$rootnodename root efi=runtime\""
+    sed -i 's,^GRUB_CMDLINE_LINUX_DEFAULT=.*,'"$grubline"',' /etc/default/grub
+	echo "!done!"
+}
+
+auto_mkinit_edit()
+{
+	$bootkeyfile=`cat fbi`
+	mods="MODULES=(efivarfs)"
+	filez="FILES=(/$bootkeyfile)"
+	hooky="HOOKS=(base udev autodetect modconf block keyboard keymap encrypt filesystems)"
+	sed -i 's,^MODULES=.*,'"$mods"',' /etc/mkinitcpio.conf
+	sed -i 's,^FILES=.*,'"$filez"',' /etc/mkinitcpio.conf
+	sed -i 's,^HOOKS=.*,'"$hooky"',' /etc/mkinitcpio.conf
+	echo "All done!"
+}
+
+finish_install()
+{
+	pacman -S ${cat pkglist.txt}
+	printf "Enter main user/admin user name: "
+	read user
+	useradd -m -G wheel -s /bin/bash $user
+	passwd $user
+	sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
+}
+
 if [[ -z $1 ]]; then
 then
 	if [ -f 'mandiskenc' ]
@@ -144,7 +174,11 @@ then
 		fi
 	fi
 	
-	connect-interwebz
+	printf "Are you online?(y/n)"
+	read anz
+	if [ ! $anz == 'y' ]
+		connect-interwebz
+	fi
 	
 	printf("Press x to skip keymap selection(default US): ")
 	choice_one $x
@@ -170,8 +204,10 @@ then
 		echo "There seems to be a problem, fix it(or manually make fstab) then run -r"
 		exit 1
 	fi
-	cp -u HR-archinstall /mnt/HR-archinstall
+	cp -u ss zog fbi HR-archinstall /mnt
 	archchroot /mnt /bin/bash -c /HR-archinstall -n
+	umount -R /mnt
+	reboot
 else
 case $1
 	-l|--list)
@@ -183,38 +219,64 @@ case $1
 		timez_setz
 		setz_localez
 		
-		echo "Edit hosts:"
-		read
-		nano /etc/hosts
-		echo "Edit hostname:"
-		read
-		nano /etc/hostname
+		printf "Enter computer name:"
+		read $compname
+		echo $compname > /etc/hosts
 		
-		echo "Edit mkinitcpio.conf:"
-		nano /etc/mkinitcpio.conf
-		echo "Building kernel"
+		printf "Did you use install script to partition?(y/n): "
+		read ans
+		if [ $ans == 'y' ]
+		then
+			auto_mkinit_edit
+		fi
+		printf "Edit mkinitcpio.conf defaults?(Y/n): "
+		read edit_mkinit
+		if [ ! $edit_mkinit == 'n' ]
+		then
+			echo "Edit mkinitcpio.conf:"
+			nano /etc/mkinitcpio.conf
+			echo "Building kernel"
+		fi
 		mkinitcpio -p linux
 		
 		echo "Set root password:"
 		passwd
 		
 		pacman -S grub efibootmgr
-		echo "Edit grub /etc/defaults:"
-		read
-		nano /etc/default/grub
 		
-		echo "Installing grub..."
-		grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+		
+		if [ $ans == 'y' ]
+		then
+			auto_grub_edit
+		fi
+		printf "Edit grub defaults?(Y/n): "
+		read edit_grub
+		if [ ! $edit_grub == 'n' ]
+		then
+			echo "Edit grub /etc/defaults:"
+			read
+			nano /etc/default/grub
+		fi
+		if [ ans == 'y' ]
+		then
+			echo "Installing grub..."
+			grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+		else
+			printf "Enter your desired grub-install parameters: "
+			read parameters
+			grub-install $parameters
+		fi
 		grub-mkconfig -o /boot/grub/grub.cfg
+		printf "Would you like to stop at minimal and reboot into your install(y) or continue(n)?(y/n): "
+		read anf
+		if [ anf == 'n' ]
+		then
+			finish_install
+		fi
 		
 	;;
 	-f|--finish)
-		pacman -S ${cat pkglist.txt}
-		printf "Enter main user/admin user name: "
-		read user
-		useradd -m -G wheel -s /bin/bash $user
-		passwd $user
-		sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
+		finish_install
 	;;
 	-e|--extra)
 		
