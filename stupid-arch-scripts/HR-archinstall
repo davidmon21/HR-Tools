@@ -128,6 +128,7 @@ auto_grub_edit()
 {
 	rootuuid=`cat ss`
 	rootnodename=`cat zog`
+	rm ss zog
     grubline="GRUB_CMDLINE_LINUX_DEFAULT=\"quiet cryptdevice=$rootuuid:$rootnodename root=/dev/mapper/$rootnodename resume=/dev/mapper/$rootnodename root efi=runtime\""
     sed -i 's,^GRUB_CMDLINE_LINUX_DEFAULT=.*,'"$grubline"',' /etc/default/grub
 	echo "!done!"
@@ -135,7 +136,8 @@ auto_grub_edit()
 
 auto_mkinit_edit()
 {
-	$bootkeyfile=`cat fbi`
+	bootkeyfile=`cat fbi`
+	rm fbi
 	mods="MODULES=(efivarfs)"
 	filez="FILES=(/$bootkeyfile)"
 	hooky="HOOKS=(base udev autodetect modconf block keyboard keymap encrypt filesystems)"
@@ -147,12 +149,56 @@ auto_mkinit_edit()
 
 finish_install()
 {
-	pacman -S ${cat pkglist.txt}
+	echo "choose package sets"
+	ops=($(ls -d *.pkglist/))
+	let len=${#ops[@]}-1
+    for each in `seq 0 $len`
+    do
+        echo $each ${ops[$each]}
+    done
+    printf "enter your choice: "
+    read -a choices
+    packagelist=""
+    serviceslist=""
+    
+    for choice in "${choices[@]}";do 
+		packagelist+="${ops[$choice]} "
+		servicea="`echo cut -d'.' -f 1`"
+		servicea+=".services"
+		if [ -f $servicea ]
+		then
+			serviceslist+="$servicea "
+		fi
+	done
+	
+	installdis="echo `cat $packagelist`"
+	pacman -S $installdis
+	servicedis="echo `cat $serviceslist`"
+	systemctl enable $servicesdis
+	
 	printf "Enter main user/admin user name: "
 	read user
 	useradd -m -G wheel -s /bin/bash $user
 	passwd $user
 	sed -i '/%wheel ALL=(ALL) ALL/s/^#//g' /etc/sudoers
+	
+	xterm="xfce4-terminal"
+	printf "open xterm and install yay on start up?(y/n)"
+	read q
+	if [ q == 'y' ]
+	then
+		printf "Default terminal is $xterm, enter a different xterm?(y/n)"
+		read q
+		
+		if [ !q == 'n' ]
+		then
+			printf "Enter terminal: "
+			read xterm
+		fi
+		
+		mkdir -p /home/$user/.config/autostart
+		echo "$xterm -e ~/HR-Tools/HR-archinstall -y" > /home/$user/.config/autostart/finish 
+	fi	
 }
 
 if [[ -z $1 ]]; then
@@ -206,11 +252,12 @@ then
 	fi
 	cp -u ss zog fbi HR-archinstall /mnt
 	archchroot /mnt /bin/bash -c /HR-archinstall -n
+	rm /mnt/HR-archinstall /mnt/*.pkglist
 	umount -R /mnt
 	reboot
 else
 case $1
-	-l|--list)
+	-r|--recovery)
 		touch /mnt/succ
 		cp -u HR-archinstall /mnt/HR-archinstall
 		archchroot /mnt /bin/bash -c /HR-archinstall -n
@@ -272,14 +319,22 @@ case $1
 		if [ anf == 'n' ]
 		then
 			finish_install
+		else
+			echo "You will be able to continue installation by running ./HR-Tools/HR-archinstall -f"
+			mkdir -p /root/HR-Tools
+			cp -u HR-archinstall *.pkglist /root/HR-Tools
+			chmod +x /root/HR-Tools/HR-archinstall
 		fi
-		
 	;;
 	-f|--finish)
 		finish_install
 	;;
-	-e|--extra)
-		
+	-y|--yay)
+		git clone https://aur.archlinux.org/yay.git
+		cd ./yay
+		makepkg -si
+		cd ../
+		rm -rf ./yay
 	;;
 esac
 fi
