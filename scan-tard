@@ -1,4 +1,8 @@
 #!/bin/bash
-clamav-unofficial-sigs.sh
+name=$USER
+sudo clamav-unofficial-sigs.sh
 _now=$(date +"%m_%d_%Y")
-clamscan --recursive --infected --exclude-dir='^/sys|^/dev|^/proc|^/var/lib/clamav' --max-filesize=4000M --max-scansize=4000M / -l ~/clamav-scan-results/scan$_now
+sudo clamscan --recursive --infected --exclude-dir='^/sys|^/dev|^/proc|^/var/lib/clamav' --max-filesize=4000M --max-scansize=4000M / -l ~/clamav-scan-results/scan
+mkdir -p /home/$name/clamav-scan-results
+sudo cp ~/clamav-scan-results/scan /home/$name/clamav-scan-results/scan"$_now"
+sudo chown $name:$name /home/$name/clamav-scan-results/scan"$_now"

@@ -4,9 +4,9 @@ print_jails(){
     printf "Running X11 Jails:\n$RES\n"
     
     let len=${#ops[@]}-1
-    for each in `seq 0 $len`
+    for each in $(seq 0 $len)
     do
-        echo $each ${ops[$each]}
+        echo "$each" "${ops[$each]}"
     done
 }
 

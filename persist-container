@@ -1,0 +1,10 @@
+#!/bin/bash
+if [ ! $1 ]
+then
+	echo "use: $0 repo container program"
+else
+	docker run -i -e LC_ALL="en_US.UTF-8" -t "$1"/"$2" "$3"
+	COTAINER_ID=$(docker ps -lq)
+	docker commit "$CONTAINER_ID" mouse/selfbot
+	docker container prune
+fi
