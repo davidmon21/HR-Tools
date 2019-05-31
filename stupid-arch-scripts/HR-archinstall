@@ -346,6 +346,7 @@ grubber_work()
 		read -r parameters
 		grub-install $parameters
 	fi
+	echo $parameters > /ramit
 	
 }
 
@@ -392,6 +393,7 @@ move_over()
 	cp -u *.services *.pkglist ss zog fbi $scriptname /mnt
 	echo "CHROOT"
 	arch-chroot /mnt /$scriptname -n
+	parameters=$(cat /mnt/ramit)
 	arch-chroot /mnt /bin/grub-mkconfig -o /boot/grub/grub.cfg
 	arch-chroot /mnt /bin/grub-install $parameters
 }
