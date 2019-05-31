@@ -476,7 +476,7 @@ finish_install()
     printf "\n\nINSTALLING PACKAGES\n\n"
 	installdis=$(cat $packagelist)
 	pacman -Syu
-	packages=$(echo "$kmod $installdis $vchoice" | tr '\n' ' ')
+	packages=$(echo "$kmod $installdis $vid" | tr '\n' ' ')
 	pacman -S $packages sudo
 	printf "\n\nENABLING SERVICES\n\n"
 	servicedis=$(echo $(cat $serviceslist) | tr '\n' ' ')

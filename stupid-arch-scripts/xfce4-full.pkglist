@@ -22,9 +22,7 @@ peek
 polkit
 pulseaudio-bluetooth
 pulseaudio-zeroconf
-thunar-archive-plugin
 thunar
-thunar-media-tags-plugin
 thunar-volman
 bluez
 bluez-utils
