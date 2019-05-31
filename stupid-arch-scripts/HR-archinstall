@@ -334,12 +334,12 @@ grubber_work()
 	sleep .5
 	printf "\n\nBuilding grub.cfg\n"
 	grub-mkconfig -o /boot/grub/grub.cfg
-	
+	parameters="--target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB"
 	if [ "$ans" == 'y' ]
 	then
 		grub-mkconfig -o /boot/grub/grub.cfg
 		printf "\n\nInstalling grub...\n"
-		grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+		grub-install $parameters
 	else
 		grub-mkconfig -o /boot/grub/grub.cfg
 		printf "\n\nEnter your desired grub-install parameters: "
@@ -392,6 +392,8 @@ move_over()
 	cp -u *.services *.pkglist ss zog fbi $scriptname /mnt
 	echo "CHROOT"
 	arch-chroot /mnt /$scriptname -n
+	arch-chroot /mnt /bin/grub-mkconfig -o /boot/grub/grub.cfg
+	arch-chroot /mnt /bin/grub-install $parameters
 }
 
 shutitdown()
