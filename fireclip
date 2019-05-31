@@ -35,7 +35,7 @@ if [[ -z $1 ]]
 	then
 		dis=":0"
 	else
-		dis=${ops[$choice}
+		dis=${ops[$choice]}
 	fi
 
     printf "\nGrab paste(g) or pass paste(e): "
@@ -69,7 +69,7 @@ else
 			then
 				dis=":0"
 			else
-				dis=${ops[$2}
+				dis=${ops[$2]}
 			fi
             grab=1
             do_work
@@ -79,7 +79,7 @@ else
 			then
 				dis=":0"
 			else
-				dis=${ops[$2}
+				dis=${ops[$2]}
 			fi
             grab=0
             do_work
@@ -89,7 +89,7 @@ else
 			then
 				dis=":0"
 			else
-				dis=${ops[$2}
+				dis=${ops[$2]}
 			fi
 			xclip -display ${ops[$2]} -selection CLIPBOARD -i < $3
         ;;
@@ -98,7 +98,7 @@ else
 			then
 				dis=":0"
 			else
-				dis=${ops[$3}
+				dis=${ops[$3]}
 			fi
             DISPLAY=$dis xset $2 off
         ;;
@@ -107,7 +107,7 @@ else
 			then
 				dis=":0"
 			else
-				dis=${ops[$2}
+				dis=${ops[$2]}
 			fi
 			xclip -display $dis -selection CLIPBOARD -o
 		;;
@@ -116,7 +116,7 @@ else
 			then
 				dis=":0"
 			else
-				dis=${ops[$2}
+				dis=${ops[$2]}
 			fi
 			xclip -display $dis -selection CLIPBOARD -i
 		;;
