@@ -25,10 +25,18 @@ RES=`firemon --x11`
 declare -a ops=( `echo $RES| grep -o :[0-9][0-9][0-9]| awk '{ print $1 }'` )
 unset IFS
 
-if [[ -z $1 ]]; then
+if [[ -z $1 ]]
+	then
+	printf "\nWelcome to fireclip - a simple text moving script for the lazy!\n\nYou are currently in interactive mode, -h/--h/-help/--help for command list.\n\n"
     print_jails
-    printf "\nEnter a display: "
+    printf "\nEnter a display(m for main/default): "
     read choice
+    if [ $choice == 'm' ]
+	then
+		dis=":0"
+	else
+		dis=${ops[$choice}
+	fi
 
     printf "\nGrab paste(g) or pass paste(e): "
     read choice2
@@ -38,27 +46,79 @@ if [[ -z $1 ]]; then
     else
         grab=0
     fi
-    dis=${ops[$choice]}
+
     do_work
 else
-    case $1 in 
+    case $1 in
+		-h|--h|-help|--help)
+			printf "\nWelcome to fireclip - a simple text moving script for the lazy!\n\n"
+			echo "$(basename $0) -l|--list : display available xephyr/firejail displays main display/:0 is accessed with m"
+			echo "$(basename $0) -g|--grab DIS : transfer 1 displays paste into current displays clipboard"
+			echo "$(basename $0) -s|--send DIS : send current displays paste to another displays"
+			echo "$(basename $0) -f|--file DIS : put file into displays clipboard"
+			echo "$(basename $0) -x|--xsetoff value DIS : turn off an xset value on display"
+			echo "$(basename $0) -p|--prints DIS : prints displays clipboard"
+			echo "$(basename $0) -r|--raw-grab DIS : opens display for input, reverse of print"
+			printf "$(basename $0) : simple interactive mode\n\nHope you enjoy!\n\n"
+		;;
         -l|--list)
             print_jails
         ;;
         -g|--grab)
+			if [ $2 == 'm' ]
+			then
+				dis=":0"
+			else
+				dis=${ops[$2}
+			fi
             grab=1
-            dis=${ops[$2]}
             do_work
         ;;
         -s|--send)
+			if [ $2 == 'm' ]
+			then
+				dis=":0"
+			else
+				dis=${ops[$2}
+			fi
             grab=0
-            dis=${ops[$2]}
             do_work
         ;;
         -f|--file)
+			if [ $2 == 'm' ]
+			then
+				dis=":0"
+			else
+				dis=${ops[$2}
+			fi
 			xclip -display ${ops[$2]} -selection CLIPBOARD -i < $3
         ;;
         -x|--xsetoff)
-            DISPLAY=${ops[$3]} xset $2 off
+			if [ $2 == 'm' ]
+			then
+				dis=":0"
+			else
+				dis=${ops[$3}
+			fi
+            DISPLAY=$dis xset $2 off
+        ;;
+        -p|--prints)
+			if [ $2 == 'm' ]
+			then
+				dis=":0"
+			else
+				dis=${ops[$2}
+			fi
+			xclip -display $dis -selection CLIPBOARD -o
+		;;
+		-r|--raw-grab)
+			if [ $2 == 'm' ]
+			then
+				dis=":0"
+			else
+				dis=${ops[$2}
+			fi
+			xclip -display $dis -selection CLIPBOARD -i
+		;;
     esac
 fi

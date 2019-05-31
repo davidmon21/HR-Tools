@@ -179,14 +179,23 @@ easy_diskprep()
 		echo "$keyname" > fbi
 		echo "$rootnodename" > zog
 	}
-	unencrypted()
+	unencrypted_efi()
 	{
 		grab_disk
 		efi_two_partition 8300
 		format_mount_efi
 		
 	}
-	encrypted_efi
+	printf "/n/nEncrypted efi(e), plain efi(p):"
+	read $sel
+	case $sel in
+		e|encrypted)
+			encrypted_efi
+		;;
+		p|plain)
+			unencrypted_efi
+		;;
+	esac
 }
 
 connect-interwebz()
@@ -480,7 +489,7 @@ finish_install()
     printf "\n\nINSTALLING PACKAGES\n\n"
 	installdis=$(cat $packagelist)
 	pacman -Syu
-	packages=$(echo "$kmod $installdis $vid" | tr '\n' ' ')
+	packages=$(echo "$installdis $vid" | tr '\n' ' ')
 	pacman -S $packages sudo
 	printf "\n\nENABLING SERVICES\n\n"
 	servicedis=$(echo $(cat $serviceslist) | tr '\n' ' ')
