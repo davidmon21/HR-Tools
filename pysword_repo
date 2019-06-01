@@ -1,0 +1,130 @@
+#!/bin/python3
+
+protocolstrings = { "ftpsource" : "ftp://" }
+
+import os
+import urllib
+from ftplib import FTP
+from dateutil import parser
+import datetime
+import configparser
+import shutil
+from urllib import parse
+from urllib import request
+
+swordpath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles")
+configfile = os.path.join(swordpath,".heathenrepo")
+
+config = configparser.ConfigParser()
+
+if os.path.exists(configfile):
+	config.read(configfile)
+else:
+	if os.path.exists(swordpath) == False:
+		os.makedirs(swordpath)
+	config['MAIN'] = {'master repo list' : 'masterRepoList.conf', 'master server':'ftp.crosswire.org', 'master server repo path':'pub/sword', 'sword home':swordpath }
+	with open(configfile,'w') as conf:
+		config.write(conf)
+	config = configparser.ConfigParser()
+	config.read(configfile)
+	
+	
+
+master_repo_list_name = config['MAIN']['master repo list']
+master_repo_server = config['MAIN']['master server']
+master_repo_path = config['MAIN']['master server repo path']
+swordpath = config['MAIN']['sword home']
+
+def check_ftp_timestamp(server, filepath):
+	ftp = FTP(server)
+	ftp.login()
+	timestamp = ftp.voidcmd('MDTM {}'.format(filepath))[4:].strip()
+	ftp.close()
+	return [server,os.path.basename(filepath),timestamp]
+
+def ftp_new(timestamp):
+	server = timestamp[0]
+	serverfile = timestamp[1]
+	servertimestamp = timestamp[2]
+	
+	configfile = os.path.join(swordpath,".ftptimestamps")
+	confige = configparser.ConfigParser()
+	if os.path.exists(configfile):
+		confige.read(configfile)
+
+	if server in confige:
+		if serverfile in confige[server]:
+			if confige[server][serverfile] == servertimestamp:
+				return False
+			else:
+				confige[server][serverfile] == servertimestamp
+				with open(configfile,'w') as conf:
+					confige.write(conf)
+				return True
+		else:
+			confige[server][serverfile] = servertimestamp
+			with open(configfile,'w') as conf:
+				confige.write(conf)
+			return True
+	else:
+		confige[server]={serverfile:servertimestamp}
+		with open(configfile,'w') as conf:
+			confige.write(conf)
+		return True
+
+
+def update_repo_list():
+	if ftp_new(check_ftp_timestamp("ftp.crosswire.org","pub/sword/masterRepoList.conf")):
+		download = os.path.join(swordpath,master_repo_list_name)
+		urldownload = urllib.parse.urljoin("ftp://ftp.crosswire.org","pub/sword/{}".format(master_repo_list_name))
+		urllib.request.urlretrieve(urldownload, download)
+
+def process_repo_list():
+	repolist = os.path.join(swordpath,master_repo_list_name)
+	confige = configparser.ConfigParser(delimiters="|")
+	confige.read(repolist)
+	configures = {}
+	for servername in confige['Repos']:
+		serverdetails = confige['Repos'][servername].split('|')
+		protocol = servername.split("=")[1]
+		configures[servername] = { "path" : serverdetails[1], "url":serverdetails[0], "proto":protocol }
+	return configures
+
+def download_repos(repolist):
+	returnList = {}
+	for server in [option for option in repolist]:
+		filename = "mods.d.tar.gz"
+		url = repolist[server]['url']
+		proto = repolist[server]['proto']
+		serverfilepath = os.path.join(repolist[server]['path'], filename)
+		
+		if ftp_new(check_ftp_timestamp(url, serverfilepath)):
+			url = protocolstrings[proto]+url
+			localfile=os.path.join(swordpath,filename)
+			urllib.request.urlretrieve(urllib.parse.urljoin(url,serverfilepath), localfile )
+			returnList[server] = { "path":serverfilepath, "url":url, "proto":proto }
+			tar = shutil.unpack_archive(localfile,swordpath)
+			
+	return returnList
+		
+def save_config():
+	with open(configfile,'w') as conf:
+		config.write(conf)
+
+def initiate_repo():
+	download = os.path.join(swordpath,master_repo_list_name)
+	masterlist = os.path.join(master_repo_path,master_repo_list_name)
+	urldownload = urllib.parse.urljoin("ftp://"+master_repo_server, masterlist) 
+	if os.path.exists(download):
+		if ftp_new(urllib.parse.urljoin(master_repo_server,masterlist)):
+			urllib.request.urlretrieve(urldownload, download)
+	else:
+		urllib.request.urlretrieve(urldownload, download)
+	
+	repolist = process_repo_list()
+	
+	download_repos(repolist)
+
+initiate_repo()
+update_repo_list()
+save_config()

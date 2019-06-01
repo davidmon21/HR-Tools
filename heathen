@@ -1,0 +1,51 @@
+#!/bin/python3
+import os
+import random
+import argparse
+import "pysword_repo"
+
+try:
+	from pysword.modules import SwordModules
+except:
+	print("You are missing pysword, to install: pip install [--user] pysword\nOr check your repository")
+	exit(1)
+
+biblepath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles")
+
+def versePrint(version, book, chapter, verses):
+	selected = os.path.join(biblepath,version+'.zip')
+
+	modules = SwordModules(selected)
+	modules.parse_modules()
+	bible = modules.get_bible_from_module(version)
+ftp = FTP("ftp.crosswire.org")
+	verses[0] = int(verses[0])
+
+	if len(verses) > 1:
+		if verses[1] == "*":
+			verses[1] = bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1]
+		verses[1] = int(verses[1])
+		verses = list(range(verses[0],verses[1]+1))
+
+	return bible.get(books=[book], chapters=[chapter], verses=verses)
+
+
+if __name__ == '__main__':
+	parser = argparse.ArgumentParser(description='Grab bible verses!')
+	verse_help = "Display verse: book chapter:verse(s)\n {} --verse john 3:16-*".format(parser.prog)
+
+	parser.add_argument("--verse", "-v", help=verse_help, nargs=2, default=None, metavars=("book","verse"))
+	parser.add_argument("--version", "-b", help='Bible version', nargs=1, default=[u'DRC'])
+	args = parser.parse_args()
+
+	if args.verse != None : 
+		book = args.verse[0]
+		pieces = args.verse[1].split(':')
+		chapter = int(pieces[0])
+		verses = pieces[1].split('-')
+		try:
+			print(versePrint(args.version[0], book, chapter, verses))
+		except:
+			print("verse not found... or maybe you are ordering it wrong")
+			exit(1)
+

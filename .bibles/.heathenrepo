@@ -1,0 +1,6 @@
+[MAIN]
+master repo list = masterRepoList.conf
+master server = ftp.crosswire.org
+master server repo path = pub/sword
+sword home = /home/mouse/HR-Tools/.bibles
+
