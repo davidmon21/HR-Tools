@@ -1,6 +1,7 @@
 
-\.bibles/mods\.d/
-
 \.bibles/mods\.d\.tar\.gz
 
-\.bibles/\.ftptimestamps
+
+*.conf
+
+\.bibles/mods\.d/DEADJOE

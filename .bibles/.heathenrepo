@@ -1,6 +1,14 @@
 [MAIN]
 master repo list = masterRepoList.conf
+master repo list localpath = /home/mouse/HR-Tools/.bibles/masterRepoList
+python repo list = /home/mouse/HR-Tools/.bibles/mods.d/.python_helpful_confs
+python repo outdated list = /home/mouse/HR-Tools/.bibles/mods.d/.python_helpful_confs.outdated
 master server = ftp.crosswire.org
 master server repo path = pub/sword
 sword home = /home/mouse/HR-Tools/.bibles
+repo directory = mods.d
+repo path = /home/mouse/HR-Tools/.bibles/mods.d
+repo tar.gz = mods.d.tar.gz
+time stamp filelist = /home/mouse/HR-Tools/.bibles/.ftptimestamps
+temporary directory = /home/mouse/HR-Tools/.bibles/.temp
 

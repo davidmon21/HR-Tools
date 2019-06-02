@@ -1,39 +1,108 @@
 #!/bin/python3
 
-protocolstrings = { "ftpsource" : "ftp://" }
-
 import os
 import urllib
-from ftplib import FTP
-from dateutil import parser
-import datetime
 import configparser
 import shutil
+import pydoc
+import glob
+
 from urllib import parse
 from urllib import request
+from ftplib import FTP
+from packaging import version
 
-swordpath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles")
-configfile = os.path.join(swordpath,".heathenrepo")
+configuration = configparser.ConfigParser()
 
-config = configparser.ConfigParser()
+repoconfigname = ""
+swordpath = ""
+repo_gz = ""
+repo_dir = ""
+repo_path = ""
+pyrepo_list = ""
+master_repo_list_name = ""
+raw_repo_list = ""
+master_server = ""
+master_server_repo = ""
+timestamp_file_list = ""
+repoconfigname = ""
+repoconfigpath = ""
+tempdir = ""
+protocolstrings = { 'ftpsource':'ftp://', 'FTPSource':'ftp://' }
+pyrepo_outdated_list = ""
 
-if os.path.exists(configfile):
-	config.read(configfile)
-else:
-	if os.path.exists(swordpath) == False:
-		os.makedirs(swordpath)
-	config['MAIN'] = {'master repo list' : 'masterRepoList.conf', 'master server':'ftp.crosswire.org', 'master server repo path':'pub/sword', 'sword home':swordpath }
-	with open(configfile,'w') as conf:
-		config.write(conf)
-	config = configparser.ConfigParser()
-	config.read(configfile)
+def initialize(swrdpath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles"), repoconf = ".heathenrepo"):
+	global repoconfigname
+	global swordpath
+	global repo_gz
+	global repo_dir
+	global repo_path
+	global pyrepo_list
+	global master_repo_list_name
+	global raw_repo_list
+	global master_server
+	global master_server_repo
+	global timestamp_file_list
+	global configuration
+	global repoconfigname
+	global repoconfigpath
+	global tempdir
+	global pyrepo_outdated_list
 	
-	
-
-master_repo_list_name = config['MAIN']['master repo list']
-master_repo_server = config['MAIN']['master server']
-master_repo_path = config['MAIN']['master server repo path']
-swordpath = config['MAIN']['sword home']
+	swordpath = swrdpath
+	repoconfigname = repoconf 
+	repoconfigpath=os.path.join(swordpath,repoconfigname)
+	repo_dir = "mods.d"
+	repo_gz = repo_dir+".tar.gz"
+	configfile = os.path.join(swordpath,repoconfigname)
+	repo_path = os.path.join(swordpath,repo_dir)
+	pyrepo_list = os.path.join(repo_path,".python_helpful_confs")
+	pyrepo_outdated_list = os.path.join(repo_path,".python_helpful_confs.outdated")
+	master_repo_list_name = 'masterRepoList'
+	raw_repo_list = os.path.join(swordpath,master_repo_list_name)
+	master_server = 'ftp.crosswire.org'
+	master_server_repo = 'pub/sword'
+	timestamp_file_list = os.path.join(swordpath,".ftptimestamps")
+	tempdir = os.path.join(swordpath,".temp")
+	if os.path.exists(configfile) == False:
+		if os.path.exists(swordpath) == False:
+			os.makedirs(swordpath)
+		configuration['MAIN'] = { 
+			'master repo list' : 'masterRepoList.conf', 'master repo list localpath':raw_repo_list, 'python repo list':pyrepo_list, 
+			'python repo outdated list':pyrepo_outdated_list, 'master server':master_server, 'master server repo path':master_server_repo, 
+			'sword home':swordpath, 'repo directory':repo_dir,  'repo path':repo_path, 'repo tar.gz':repo_gz, 'time stamp filelist':timestamp_file_list, 
+			'temporary directory':tempdir }
+		with open(configfile,'w') as conf:
+			configuration.write(conf)
+	configuration.read(configfile)
+	swordpath = configuration['MAIN']['sword home']
+	repo_gz = configuration['MAIN']['repo tar.gz']
+	repo_dir = configuration['MAIN']['repo directory']
+	repo_path = configuration['MAIN']['repo path']
+	pyrepo_list = configuration['MAIN']['python repo list']
+	pyrepo_outdated_list = configuration['MAIN']['python repo outdated list']
+	master_repo_list_name = configuration['MAIN']['master repo list']
+	raw_repo_list = configuration['MAIN']['master repo list localpath']
+	master_server = configuration['MAIN']['master server']
+	master_server_repo = configuration['MAIN']['master server repo path']
+	timestamp_file_list = configuration['MAIN']['time stamp filelist']
+	tempdir = configuration['MAIN']['temporary directory']
+		
+def save_config():
+	global configuration
+	configuration['MAIN']['python repo outdated list'] = pyrepo_outdated_list
+	configuration['MAIN']['sword home'] = swordpath 
+	configuration['MAIN']['repo tar.gz'] = repo_gz
+	configuration['MAIN']['repo directory'] = repo_dir
+	configuration['MAIN']['repo path'] = repo_path
+	configuration['MAIN']['python repo list'] = pyrepo_list
+	configuration['MAIN']['master repo list'] = master_repo_list_name
+	configuration['MAIN']['master repo list localpath'] = raw_repo_list
+	configuration['MAIN']['master server'] = master_server
+	configuration['MAIN']['master server repo path'] = master_server_repo
+	configuration['MAIN']['time stamp filelist'] = timestamp_file_list
+	with open(repoconfigpath,'w') as conf:
+		configuration.write(conf)
 
 def check_ftp_timestamp(server, filepath):
 	ftp = FTP(server)
@@ -47,45 +116,43 @@ def ftp_new(timestamp):
 	serverfile = timestamp[1]
 	servertimestamp = timestamp[2]
 	
-	configfile = os.path.join(swordpath,".ftptimestamps")
-	confige = configparser.ConfigParser()
-	if os.path.exists(configfile):
-		confige.read(configfile)
+	config = configparser.ConfigParser()
+	if os.path.exists(timestamp_file_list):
+		config.read(timestamp_file_list)
 
-	if server in confige:
-		if serverfile in confige[server]:
-			if confige[server][serverfile] == servertimestamp:
+	if server in config:
+		if serverfile in config[server]:
+			if config[server][serverfile] == servertimestamp:
 				return False
 			else:
-				confige[server][serverfile] == servertimestamp
-				with open(configfile,'w') as conf:
-					confige.write(conf)
+				config[server][serverfile] == servertimestamp
+				with open(timestamp_file_list,'w') as conf:
+					config.write(conf)
 				return True
 		else:
-			confige[server][serverfile] = servertimestamp
-			with open(configfile,'w') as conf:
-				confige.write(conf)
+			config[server][serverfile] = servertimestamp
+			with open(timestamp_file_list,'w') as conf:
+				config.write(conf)
 			return True
 	else:
-		confige[server]={serverfile:servertimestamp}
-		with open(configfile,'w') as conf:
-			confige.write(conf)
+		config[server]={serverfile:servertimestamp}
+		with open(timestamp_file_list,'w') as conf:
+			config.write(conf)
 		return True
 
 
 def update_repo_list():
-	if ftp_new(check_ftp_timestamp("ftp.crosswire.org","pub/sword/masterRepoList.conf")):
+	if ftp_new(check_ftp_timestamp(master_server,os.path.join(master_server_repo,master_repo_list_name))):
 		download = os.path.join(swordpath,master_repo_list_name)
-		urldownload = urllib.parse.urljoin("ftp://ftp.crosswire.org","pub/sword/{}".format(master_repo_list_name))
+		urldownload = urllib.parse.urljoin("ftp://"+master_server,os.path.join(master_server_repo,master_repo_list_name))
 		urllib.request.urlretrieve(urldownload, download)
 
 def process_repo_list():
-	repolist = os.path.join(swordpath,master_repo_list_name)
-	confige = configparser.ConfigParser(delimiters="|")
-	confige.read(repolist)
+	config = configparser.ConfigParser(delimiters="|")
+	config.read(raw_repo_list)
 	configures = {}
-	for servername in confige['Repos']:
-		serverdetails = confige['Repos'][servername].split('|')
+	for servername in config['Repos']:
+		serverdetails = config['Repos'][servername].split('|')
 		protocol = servername.split("=")[1]
 		configures[servername] = { "path" : serverdetails[1], "url":serverdetails[0], "proto":protocol }
 	return configures
@@ -93,38 +160,150 @@ def process_repo_list():
 def download_repos(repolist):
 	returnList = {}
 	for server in [option for option in repolist]:
-		filename = "mods.d.tar.gz"
 		url = repolist[server]['url']
 		proto = repolist[server]['proto']
-		serverfilepath = os.path.join(repolist[server]['path'], filename)
+		serverfilepath = os.path.join(repolist[server]['path'], repo_gz)
+		urldirty = "{}{}".format(protocolstrings[proto],url)
+		process_url = urllib.parse.urljoin(urldirty,repolist[server]['path'])
 		
 		if ftp_new(check_ftp_timestamp(url, serverfilepath)):
-			url = protocolstrings[proto]+url
-			localfile=os.path.join(swordpath,filename)
-			urllib.request.urlretrieve(urllib.parse.urljoin(url,serverfilepath), localfile )
+			localfile=os.path.join(swordpath,repo_gz)
+			urllib.request.urlretrieve(urllib.parse.urljoin(urldirty,serverfilepath), localfile )
 			returnList[server] = { "path":serverfilepath, "url":url, "proto":proto }
-			tar = shutil.unpack_archive(localfile,swordpath)
-			
+			if os.path.exists(tempdir) == False:
+				os.makedirs(tempdir)
+			shutil.unpack_archive(localfile,tempdir)
+			directorylist = os.listdir(os.path.join(tempdir,repo_dir))
+			dontcopy = process_mod_confs(directorylist, process_url)
+			os.remove(localfile)
+			if os.path.exists(repo_path) == False:
+				os.makedirs(repo_path)
+			for files in dontcopy:
+				thefile = os.path.join(os.path.join(tempdir,repo_dir),files)
+				os.remove(thefile)
+				
+			directorylist = os.listdir(os.path.join(tempdir,repo_dir))
+			for files in directorylist:
+				thefile = os.path.join(os.path.join(tempdir,repo_dir),files)
+				shutil.copy(thefile, repo_path)
+				os.remove(thefile)
 	return returnList
-		
-def save_config():
-	with open(configfile,'w') as conf:
-		config.write(conf)
 
 def initiate_repo():
-	download = os.path.join(swordpath,master_repo_list_name)
-	masterlist = os.path.join(master_repo_path,master_repo_list_name)
-	urldownload = urllib.parse.urljoin("ftp://"+master_repo_server, masterlist) 
-	if os.path.exists(download):
-		if ftp_new(urllib.parse.urljoin(master_repo_server,masterlist)):
-			urllib.request.urlretrieve(urldownload, download)
+	masterlist = os.path.join(master_server_repo,master_repo_list_name)
+	urldownload = urllib.parse.urljoin("ftp://{}".format(master_server), masterlist)
+	if os.path.exists(raw_repo_list):
+		if ftp_new(urllib.parse.urljoin(master_server,masterlist)):
+			urllib.request.urlretrieve(urldownload, raw_repo_list)
 	else:
-		urllib.request.urlretrieve(urldownload, download)
+		urllib.request.urlretrieve(urldownload, raw_repo_list)
 	
 	repolist = process_repo_list()
 	
 	download_repos(repolist)
+	
+def process_mod_confs(listit,server):
+	config = configparser.ConfigParser()
+	config2 = configparser.ConfigParser()
+	if os.path.exists(repo_path) == False:
+		os.makedirs(repo_path)
+	if os.path.exists(pyrepo_list):
+		config.read(pyrepo_list)
+	if os.path.exists(pyrepo_outdated_list):
+		config2.read(pyrepo_outdated_list)
+	returnlist = []
+	for package in listit:
+		vna = False
+		packageinfo = read_mod_conf(os.path.join(os.path.join(tempdir,repo_dir),package))
+		if 'version' not in packageinfo:
+			packageinfo['version'] = 'vna'
+		elif packageinfo['version'].isspace():
+			packageinfo['version'] = 'vna'
+			vna = True
+		packname = "{}-{}".format(package,packageinfo['name'].strip("[]"))
+		packageinfo['server url'] = server
+		
+		if packname in config:
+			if (config[packname]['version'] != 'vna') and not vna:
+				if version.parse(config[packname]['version']) < version.parse(packageinfo['version']):
+					
+					if packname in config2:
+						if version.parse(config2[packname]['version']) > version.parse(config[packname]['version']):
+							outdated_key = "{}-{}-{}".format(packname,config[packname]['version'],config[packname]['server url'])
+							if outdated_key not in config2:
+								config2[outdated_key] = config[packname]
+								del config[packname]
+						else:
+							outdated_key = "{}-{}-{}".format(packname,config2[packname]['version'],config2[packname]['server url'])
+							config2[outdated_key] = config2[packname]
+							del config2[packname]
+							config2[packname] = config[packname]
+							del config[packname]
+					else:
+						config2[packname] = config[packname]
+						del config[packname]
+					config[packname] = packageinfo
+				else:
+					returnlist.append(package)
+			elif vna and config[packname]['version'] != 'vna':
+				namo = "{}-{}-{}".format(packname,packageinfo['version'],packageinfo['server url'])
+				if namo not in config:
+					config[namo] = packageinfo
+		else:
+			config[packname] = packageinfo
+	
+	with open(pyrepo_list,'w') as conf:
+		config.write(conf)
+	with open(pyrepo_outdated_list,'w') as conf2:
+		config2.write(conf2)
+	return returnlist
+	
+		
+	
+def read_mod_conf(package):
+	active = False
+	with open(package) as config:
+		lines = config.readlines()
+	config.close()
+	packageinfo={}
+	packageinfo['name']=(lines.pop(0)).strip().rstrip().lower()
+	packageinfo['full_path']=os.path.join(repo_path,os.path.basename(package))
+	for line in lines:
+		linepieces=line.rsplit("=",1)
+		normalizedkeyname = linepieces[0].strip().rstrip().lower()
+		
+		if len(linepieces) > 1:
+			normalizedvalue = linepieces[1].replace('%','PERCENT').replace(':','COLON').strip().rstrip().lower()
+			if normalizedkeyname == 'description':
+				packageinfo['description'] = normalizedvalue
+			if normalizedkeyname == 'datapath':
+				packageinfo['datapath'] = normalizedvalue
+			if normalizedkeyname == 'lang':
+				packageinfo['lang'] = normalizedvalue
+			if normalizedkeyname == 'version':
+				packageinfo['version'] = normalizedvalue
+		elif normalizedkeyname == 'version' or active:
+			if active == False:
+				active = True
+			else:
+				packageinfo['version'] = normalizedkeyname
+				active = False
+			
+	return packageinfo
 
+#def list_local_repo(argf = ""):
+	
+	
+	#config = configparser.ConfigParser()
+	#config.read(configfile)
+	#print(config.sections('PACKAGES', raw=False, 'Description'))
+	#config.close()
+	# direc = os.path.join(swordpath, repodir)
+	# listit = 
+	# for count,package in enumerate(listit):
+		# package_list+="{}:{} version: {}\n\n    {}\n" .format((count+1),packageinfo['name'],package['name_file'], package['Version'],package['About'])
+	# pydoc.pager(package_list)
+	
+initialize()
 initiate_repo()
-update_repo_list()
-save_config()
+#list_local_repo()

@@ -18,7 +18,6 @@ def versePrint(version, book, chapter, verses):
 	modules = SwordModules(selected)
 	modules.parse_modules()
 	bible = modules.get_bible_from_module(version)
-ftp = FTP("ftp.crosswire.org")
 	verses[0] = int(verses[0])
 
 	if len(verses) > 1:
