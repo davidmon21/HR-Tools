@@ -13,7 +13,7 @@ from ftplib import FTP
 from packaging import version
 
 configuration = configparser.ConfigParser()
-
+BetaList = ["crosswire beta"]
 repoconfigname = ""
 swordpath = ""
 repo_gz = ""
@@ -30,6 +30,18 @@ repoconfigpath = ""
 tempdir = ""
 protocolstrings = { 'ftpsource':'ftp://', 'FTPSource':'ftp://' }
 pyrepo_outdated_list = ""
+betarepos = 'false'
+pymaster_list = ""
+
+languages = [
+    'af', 'am', 'ar', 'az', 'be', 'bg', 'bn', 'bs', 'ca', 'cs', 'cy', 'da',
+    'de', 'el', 'en', 'es', 'et', 'eu', 'fa', 'fi', 'fil', 'fo', 'fr', 'ga',
+    'gl', 'gu', 'he', 'hi', 'hr', 'hu', 'hy', 'id', 'is', 'it', 'ja', 'ka',
+    'kk', 'km', 'kn', 'ko', 'ky', 'lo', 'lt', 'lv', 'mk', 'ml', 'mn', 'mr',
+    'ms', 'my', 'nb', 'ne', 'nl', 'pa', 'pl', 'pt', 'ro', 'ru', 'si', 'sk',
+    'sl', 'sq', 'sr', 'sv', 'sw', 'ta', 'te', 'th', 'ti', 'to', 'tr', 'uk',
+    'und', 'ur', 'uz', 'vi', 'yue', 'zh', 'zu'
+]
 
 def initialize(swrdpath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles"), repoconf = ".heathenrepo"):
 	global repoconfigname
@@ -48,6 +60,8 @@ def initialize(swrdpath = os.path.join(os.path.dirname(os.path.realpath(__file__
 	global repoconfigpath
 	global tempdir
 	global pyrepo_outdated_list
+	global pymaster_list
+	global betarepos
 	
 	swordpath = swrdpath
 	repoconfigname = repoconf 
@@ -58,23 +72,25 @@ def initialize(swrdpath = os.path.join(os.path.dirname(os.path.realpath(__file__
 	repo_path = os.path.join(swordpath,repo_dir)
 	pyrepo_list = os.path.join(repo_path,".python_helpful_confs")
 	pyrepo_outdated_list = os.path.join(repo_path,".python_helpful_confs.outdated")
-	master_repo_list_name = 'masterRepoList'
+	master_repo_list_name = 'masterRepoList.conf'
 	raw_repo_list = os.path.join(swordpath,master_repo_list_name)
 	master_server = 'ftp.crosswire.org'
 	master_server_repo = 'pub/sword'
 	timestamp_file_list = os.path.join(swordpath,".ftptimestamps")
 	tempdir = os.path.join(swordpath,".temp")
+	pymaster_list = os.path.join(swordpath, ".py"+master_repo_list_name)
 	if os.path.exists(configfile) == False:
 		if os.path.exists(swordpath) == False:
 			os.makedirs(swordpath)
 		configuration['MAIN'] = { 
-			'master repo list' : 'masterRepoList.conf', 'master repo list localpath':raw_repo_list, 'python repo list':pyrepo_list, 
+			'master repo list' : 'masterRepoList.conf', 'master repo list localpath':raw_repo_list, 'pymaster repo list':pymaster_list, 'python repo list':pyrepo_list, 
 			'python repo outdated list':pyrepo_outdated_list, 'master server':master_server, 'master server repo path':master_server_repo, 
 			'sword home':swordpath, 'repo directory':repo_dir,  'repo path':repo_path, 'repo tar.gz':repo_gz, 'time stamp filelist':timestamp_file_list, 
-			'temporary directory':tempdir }
+			'temporary directory':tempdir, 'beta repos':'false' }
 		with open(configfile,'w') as conf:
 			configuration.write(conf)
 	configuration.read(configfile)
+	betarepos = configuration['MAIN']['beta repos']
 	swordpath = configuration['MAIN']['sword home']
 	repo_gz = configuration['MAIN']['repo tar.gz']
 	repo_dir = configuration['MAIN']['repo directory']
@@ -83,6 +99,7 @@ def initialize(swrdpath = os.path.join(os.path.dirname(os.path.realpath(__file__
 	pyrepo_outdated_list = configuration['MAIN']['python repo outdated list']
 	master_repo_list_name = configuration['MAIN']['master repo list']
 	raw_repo_list = configuration['MAIN']['master repo list localpath']
+	pymaster_list = configuration['MAIN']['pymaster repo list']
 	master_server = configuration['MAIN']['master server']
 	master_server_repo = configuration['MAIN']['master server repo path']
 	timestamp_file_list = configuration['MAIN']['time stamp filelist']
@@ -95,6 +112,7 @@ def save_config():
 	configuration['MAIN']['repo tar.gz'] = repo_gz
 	configuration['MAIN']['repo directory'] = repo_dir
 	configuration['MAIN']['repo path'] = repo_path
+	configuration['MAIN']['pymaster repo list'] = pymaster_list
 	configuration['MAIN']['python repo list'] = pyrepo_list
 	configuration['MAIN']['master repo list'] = master_repo_list_name
 	configuration['MAIN']['master repo list localpath'] = raw_repo_list
@@ -109,7 +127,7 @@ def check_ftp_timestamp(server, filepath):
 	ftp.login()
 	timestamp = ftp.voidcmd('MDTM {}'.format(filepath))[4:].strip()
 	ftp.close()
-	return [server,os.path.basename(filepath),timestamp]
+	return [server, filepath, timestamp]
 
 def ftp_new(timestamp):
 	server = timestamp[0]
@@ -125,7 +143,7 @@ def ftp_new(timestamp):
 			if config[server][serverfile] == servertimestamp:
 				return False
 			else:
-				config[server][serverfile] == servertimestamp
+				config[server][serverfile] = servertimestamp
 				with open(timestamp_file_list,'w') as conf:
 					config.write(conf)
 				return True
@@ -146,47 +164,80 @@ def update_repo_list():
 		download = os.path.join(swordpath,master_repo_list_name)
 		urldownload = urllib.parse.urljoin("ftp://"+master_server,os.path.join(master_server_repo,master_repo_list_name))
 		urllib.request.urlretrieve(urldownload, download)
+		return True
+	else:
+		return False
 
 def process_repo_list():
 	config = configparser.ConfigParser(delimiters="|")
 	config.read(raw_repo_list)
-	configures = {}
+	configures = configparser.ConfigParser()
+	
 	for servername in config['Repos']:
+		beta = 'false'
 		serverdetails = config['Repos'][servername].split('|')
-		protocol = servername.split("=")[1]
-		configures[servername] = { "path" : serverdetails[1], "url":serverdetails[0], "proto":protocol }
-	return configures
+		reesespieces = servername.split("=")
+		proto = protocolstrings[reesespieces[1]]
+		if reesespieces[2] in BetaList:
+			beta = 'true'
+		configures[reesespieces[2]] = {'path' : serverdetails[1], 'url':serverdetails[0], 'proto':proto, 'date added':reesespieces[0], 'beta':beta}
+	
+	with open(pymaster_list,'w') as conf2:
+		configures.write(conf2)
+	
 
-def download_repos(repolist):
+def download_repos():
+	config = configparser.ConfigParser()
+	config.read(pymaster_list)
 	returnList = {}
-	for server in [option for option in repolist]:
-		url = repolist[server]['url']
-		proto = repolist[server]['proto']
-		serverfilepath = os.path.join(repolist[server]['path'], repo_gz)
-		urldirty = "{}{}".format(protocolstrings[proto],url)
-		process_url = urllib.parse.urljoin(urldirty,repolist[server]['path'])
+	outdated = os.path.join(repo_path,"outdated")
+	betapath = os.path.join(repo_path,'beta')
+	if os.path.exists(outdated) == False:
+		os.makedirs(outdated)
+	if os.path.exists(repo_path) == False:
+		os.makedirs(repo_path)
+	if os.path.exists(tempdir) == False:
+		os.makedirs(tempdir)
 		
+	beta = False
+	returnList = { 'updatedrepos':{}}
+	for server in config.sections():
+		url = config[server]['url']
+		proto = config[server]['proto']
+		serverfilepath = os.path.join(config[server]['path'], repo_gz)
+		urldirty = "{}{}".format(proto,url)
+		process_url = urllib.parse.urljoin(urldirty,config[server]['path'])
 		if ftp_new(check_ftp_timestamp(url, serverfilepath)):
+			## delete server from outdated?
 			localfile=os.path.join(swordpath,repo_gz)
 			urllib.request.urlretrieve(urllib.parse.urljoin(urldirty,serverfilepath), localfile )
 			returnList[server] = { "path":serverfilepath, "url":url, "proto":proto }
-			if os.path.exists(tempdir) == False:
-				os.makedirs(tempdir)
+	
 			shutil.unpack_archive(localfile,tempdir)
 			directorylist = os.listdir(os.path.join(tempdir,repo_dir))
-			dontcopy = process_mod_confs(directorylist, process_url)
+			dontcopy = process_mod_confs(directorylist, process_url, config[server]['beta'])
 			os.remove(localfile)
-			if os.path.exists(repo_path) == False:
-				os.makedirs(repo_path)
-			for files in dontcopy:
+			
+			langstring=""
+			for files in dontcopy[0]:
+				thefile = os.path.join(os.path.join(tempdir,repo_dir),files)
+				shutil.copy(thefile, outdated+langstring)
+				os.remove(thefile)
+				
+			for files in dontcopy[1]:
 				thefile = os.path.join(os.path.join(tempdir,repo_dir),files)
 				os.remove(thefile)
 				
 			directorylist = os.listdir(os.path.join(tempdir,repo_dir))
+			thepath = repo_path
+			if config[server]['beta'] == 'true':
+				thepath = betapath
+			
 			for files in directorylist:
-				thefile = os.path.join(os.path.join(tempdir,repo_dir),files)
-				shutil.copy(thefile, repo_path)
+				thefile = os.path.join(os.path.join(tempdir,repo_dir),files+langstring)
+				shutil.copy(thefile, thepath)
 				os.remove(thefile)
+			returnList['updatedrepos'][server] = directorylist
 	return returnList
 
 def initiate_repo():
@@ -198,13 +249,16 @@ def initiate_repo():
 	else:
 		urllib.request.urlretrieve(urldownload, raw_repo_list)
 	
-	repolist = process_repo_list()
+	process_repo_list()
 	
-	download_repos(repolist)
+	download_repos()
 	
-def process_mod_confs(listit,server):
+def process_mod_confs(listit,server,beta):
 	config = configparser.ConfigParser()
 	config2 = configparser.ConfigParser()
+	outdated = os.path.join(repo_path,"outdated")
+	if os.path.exists(outdated) == False:
+		os.makedirs(outdated)
 	if os.path.exists(repo_path) == False:
 		os.makedirs(repo_path)
 	if os.path.exists(pyrepo_list):
@@ -212,43 +266,124 @@ def process_mod_confs(listit,server):
 	if os.path.exists(pyrepo_outdated_list):
 		config2.read(pyrepo_outdated_list)
 	returnlist = []
+	returnlist2 = []
 	for package in listit:
-		vna = False
-		packageinfo = read_mod_conf(os.path.join(os.path.join(tempdir,repo_dir),package))
-		if 'version' not in packageinfo:
-			packageinfo['version'] = 'vna'
-		elif packageinfo['version'].isspace():
-			packageinfo['version'] = 'vna'
-			vna = True
+		dance = False
+		configdancer = False
+		
+		temps = os.path.join(os.path.join(tempdir,repo_dir),package)
+		packageinfo = read_mod_conf(temps)
+		
 		packname = "{}-{}".format(package,packageinfo['name'].strip("[]"))
+		if beta == 'true':
+			betapath = os.path.join(repo_path,'beta')
+			if os.path.exists(betapath) == False:
+				os.makedirs(betapath)
+			if packname in config:
+				config[packname]['beta available'] = 'yes'
+			packname+="-beta"
+			package = package
+			packageinfo['full_path'] = os.path.join(betapath,package)
+		if beta == 'false':
+			if packname+"-beta" in config:
+				packageinfo['beta available'] = 'yes'
+			else:
+				packageinfo['beta available'] = 'no'
 		packageinfo['server url'] = server
 		
+		#check if package is in config
 		if packname in config:
-			if (config[packname]['version'] != 'vna') and not vna:
-				if version.parse(config[packname]['version']) < version.parse(packageinfo['version']):
-					
-					if packname in config2:
-						if version.parse(config2[packname]['version']) > version.parse(config[packname]['version']):
-							outdated_key = "{}-{}-{}".format(packname,config[packname]['version'],config[packname]['server url'])
-							if outdated_key not in config2:
-								config2[outdated_key] = config[packname]
-								del config[packname]
+			# if we are updating
+			
+			#if package is in config and both have their versions listed
+			if packageinfo['lang'] == config[packname]['lang']:
+				#if outdated configs named package is less than the new one
+				if version.parse(config[packname]['version']) <= version.parse(packageinfo['version']):
+					temp = dict(config[packname])
+					del config[packname]
+					config[packname] = packageinfo
+					if packname not in config2:
+						oldpath  = temp['full_path']
+						newpath =  os.path.join(outdated,package)
+						temp['full_path'] = newpath
+						config2[packname] = temp
+						shutil.copy(oldpath, newpath)
+					else:
+						dance = True
+						dancer = temp
+						configdancer = True
+				else:
+					dance = True
+					dancer = packageinfo
+					configdancer = False
+					#if config package isnt in outdated packages
+				
+			elif packname in config:
+				shutil.copy(os.path.join(os.path.join(tempdir,repo_dir),package),os.path.join(os.path.join(tempdir,repo_dir),package+"-"+packageinfo['lang']))
+				os.remove(os.path.join(os.path.join(tempdir,repo_dir),package))
+				packname+="-"+packageinfo['lang']
+				package+="-"+packageinfo['lang']
+				
+				packageinfo['full_path'] = os.path.join(repo_path,package)
+				
+				if packname in config:
+					if version.parse(config[packname]['version']) <= version.parse(packageinfo['version']):
+						temp = dict(config[packname])
+						del config[packname]
+						config[packname] = packageinfo
+						if packname not in config2:
+							oldpath  = temp['full_path']
+							newpath =  os.path.join(outdated,package)
+							temp['full_path'] = newpath
+							config2[packname] = temp
+							shutil.copy(oldpath, newpath)
 						else:
-							outdated_key = "{}-{}-{}".format(packname,config2[packname]['version'],config2[packname]['server url'])
+							dance = True
+							dancer = temp
+							configdancer = True
+					else:
+						dance = True
+						dancer = packageinfo
+						configdancer = False
+						#if config package isnt in outdated packages
+				else:
+					config[packname] = packageinfo
+			if dance:
+				if package in config2:
+					outdated = os.path.join(repo_path,"outdated")
+					outdatedhere = os.path.join(outdated)
+					if configdancer:
+						shutil.copy(os.path.join(outdatedhere,package),dancer['full_path'])
+						os.remove(dancer['full_path'])
+						dancer['full_path'] = os.path.join(outdatedhere,package)
+					if version.parse(dancer['version']) < version.parse(config2[packname]['version']):
+						outdated_key = "{}-{}".format(packname,dancer['version'])
+						if outdated_key not in config2:
+							config2[outdated_key] = dancer
+							oldpath = dancer['full_path']
+							config2[outdated_key]['full_path'] = os.path.join(outdatedhere,package)
+							if not configdancer:
+								returnlist.append(package)
+					else:
+						outdated_key = "{}-{}".format(packname,config2[packname]['version'])
+						if outdated_key in config2:
+							if version.parse(config2[packname]) > version.parse(config2[outdated-key]['version']):
+								del config2[outdated-key]
+								config2[outdated-key] = config2[packname]
+								if not configdancer:
+									returnlist.append(package)
+								del config2[packname]
+								config2[packname] = dancer
+							else:
+								if not configdancer:
+									returnlist2.append(package)
+						else:
 							config2[outdated_key] = config2[packname]
 							del config2[packname]
-							config2[packname] = config[packname]
-							del config[packname]
-					else:
-						config2[packname] = config[packname]
-						del config[packname]
-					config[packname] = packageinfo
-				else:
-					returnlist.append(package)
-			elif vna and config[packname]['version'] != 'vna':
-				namo = "{}-{}-{}".format(packname,packageinfo['version'],packageinfo['server url'])
-				if namo not in config:
-					config[namo] = packageinfo
+							config2[packname] = dancer
+							if not configdancer:
+								returnlist.append(package)
+
 		else:
 			config[packname] = packageinfo
 	
@@ -256,7 +391,7 @@ def process_mod_confs(listit,server):
 		config.write(conf)
 	with open(pyrepo_outdated_list,'w') as conf2:
 		config2.write(conf2)
-	return returnlist
+	return [returnlist, returnlist2]
 	
 		
 	
@@ -282,15 +417,44 @@ def read_mod_conf(package):
 				packageinfo['lang'] = normalizedvalue
 			if normalizedkeyname == 'version':
 				packageinfo['version'] = normalizedvalue
-		elif normalizedkeyname == 'version' or active:
-			if active == False:
-				active = True
-			else:
-				packageinfo['version'] = normalizedkeyname
-				active = False
-			
 	return packageinfo
-
+def search_description_module(string):
+	pass
+def find_module(modulename, outdated=False, beta=False, lang=""):
+	config = configparser.ConfigParser()
+	if outdated:
+		config.read(pyrepo_outdated_list)
+		if beta:
+			beta=False
+			print("cant do beta with outdated, derp")
+	else:
+		config.read(pyrepo_list)
+	a=".conf"
+	b="-"
+	c="beta"
+	modules = []
+	if modulename+a+b+modulename in config.keys():
+		modules.append([modulename+a+b+modulename,config[modulename+a+b+modulename]])
+	elif modulename in config.keys():
+		modules.append([modulename, config[modulename]])
+	if beta:
+		if modulename+a+b+modulename+b+c in config.keys():
+			modules.append([modulename+a+b+modulename+b+c,config[modulename+a+b+modulename+b+c]])
+		elif modulename+b+c in config.keys():
+			modules.append([modulename+b+c,config[modulename+b+c]])
+	if lang != "":
+		if lang != "all":
+			if modulename+a+b+modulename+b+lang in config.keys():
+				modules.append([modulename+a+b+modulename+b+lang,config[modulename+a+b+modulename+b+langu]])
+			elif modulename+b+lang in config.keys():
+				modules.append([modulename+b+lang, config[modulename+b+lang]])
+		else:
+			for langu in languages:
+				if modulename+a+b+modulename+b+langu in config.keys():
+					modules.append([modulename+a+b+modulename+b+langu,config[modulename+a+b+modulename+b+langu]])
+				elif modulename+b+langu in config.keys():
+					modules.append([modulename+b+langu,config[modulename+b+langu]])
+	return modules 
 #def list_local_repo(argf = ""):
 	
 	
@@ -303,7 +467,13 @@ def read_mod_conf(package):
 	# for count,package in enumerate(listit):
 		# package_list+="{}:{} version: {}\n\n    {}\n" .format((count+1),packageinfo['name'],package['name_file'], package['Version'],package['About'])
 	# pydoc.pager(package_list)
-	
+
 initialize()
 initiate_repo()
+update_repo_list()
+download_repos()
+print(find_module('strongsgreek',outdated=True,lang="all",beta=True))
+
+
+
 #list_local_repo()

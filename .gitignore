@@ -5,3 +5,9 @@
 *.conf
 
 \.bibles/mods\.d/DEADJOE
+
+\.bibles/mods\.d/augustine\.conf-ru
+
+\.bibles/mods\.d/chrysostom\.conf-ru
+
+\.bibles/mods\.d/tsk\.conf-tkr-cyrl

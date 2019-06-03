@@ -1,90 +1,70 @@
-[strongsgreek.conf-strongsgreek]
-name = [strongsgreek]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/strongsgreek.conf
-datapath = ./modules/lexdict/rawld/strongsgreek/strongsgreek
+[netfree.conf-netfree]
+name = [netfree]
+full_path = /home/mouse/HR-Tools/.bibles/mods.d/outdated/netfree.conf
+datapath = ./modules/texts/ztext/netfree/
+version = 1.0.1
 lang = en
-version = 1.2
-description = strong's greek bible dictionary
+description = free version of new english translation with limited notes
+beta available = no
 server url = ftp://ftp.crosswire.org/pub/sword/raw
 
-[smith.conf-smith]
-name = [smith]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/smith.conf
-datapath = ./modules/lexdict/rawld/smith/smith
+[nettext.conf-nettext]
+name = [nettext]
+full_path = /home/mouse/HR-Tools/.bibles/mods.d/outdated/nettext.conf
+datapath = ./modules/texts/ztext/nettext/
+version = 1.0.0
 lang = en
-version = 1.3
-description = smith's bible dictionary
+description = new english translation text only with footnote markers
+beta available = no
 server url = ftp://ftp.crosswire.org/pub/sword/raw
 
-[clarke.conf-clarke]
-name = [clarke]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/clarke.conf
-datapath = ./modules/comments/zcom/clarke/
+[netnotesfree.conf-netnotesfree]
+name = [netnotesfree]
+full_path = /home/mouse/HR-Tools/.bibles/mods.d/outdated/netnotesfree.conf
+datapath = ./modules/comments/zcom/netnotesfree/
+description = free version of net bible footnotes with limited notes
+version = 1.0.1
 lang = en
-description = adam clarke's commentary on the bible
-version = 1.0
-server url = ftp://ftp.crosswire.org/pub/sword/raw
-
-[twenty.conf-twenty]
-name = [twenty]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/twenty.conf
-datapath = ./modules/texts/ztext/twenty/
-lang = en
-version = 1.1
-description = twentieth century new testament
-server url = ftp://ftp.crosswire.org/pub/sword/raw
-
-[jst.conf-jst]
-name = [jst]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/jst.conf
-datapath = ./modules/texts/ztext/jst/
-lang = en
-description = joseph smith translation
-version = 1.1
-server url = ftp://ftp.crosswire.org/pub/sword/raw
-
-[tsk.conf-tsk]
-name = [tsk]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/tsk.conf
-datapath = ./modules/comments/zcom/tsk/
-lang = en
-version = 1.4
-description = treasury of scripture knowledge
-server url = ftp://ftp.crosswire.org/pub/sword/raw
-
-[daily.conf-daily]
-name = [daily]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/daily.conf
-datapath = ./modules/lexdict/rawld/devotionals/daily/daily
-lang = en
-description = jonathan bagster's daily light on the daily path
-version = 1.0
-server url = ftp://ftp.crosswire.org/pub/sword/raw
-
-[strongshebrew.conf-strongshebrew]
-name = [strongshebrew]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/strongshebrew.conf
-datapath = ./modules/lexdict/rawld/strongshebrew/strongshebrew
-lang = en
-version = 1.2
-description = strong's hebrew bible dictionary
+beta available = no
 server url = ftp://ftp.crosswire.org/pub/sword/raw
 
 [luther.conf-luther]
 name = [luther]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/luther.conf
+full_path = /home/mouse/HR-Tools/.bibles/mods.d/outdated/luther.conf
 datapath = ./modules/comments/zcom/luther/
 lang = en
 description = luther's commentary on selected bible passages
 version = 1.1
+beta available = no
+server url = ftp://ftp.crosswire.org/pub/sword/raw
+
+[alzat.conf-alzat]
+name = [alzat]
+full_path = /home/mouse/HR-Tools/.bibles/mods.d/outdated/alzat.conf
+datapath = ./modules/genbook/rawgenbook/alzat/alzat
+lang = ar
+version = 1.0
+description = الذات للبابا شنودة الثالث
+beta available = no
+server url = ftp://ftp.crosswire.org/pub/sword/raw
+
+[barnes.conf-barnes]
+name = [barnes]
+full_path = /home/mouse/HR-Tools/.bibles/mods.d/outdated/barnes.conf
+datapath = ./modules/comments/zcom/barnes/
+lang = en
+version = 1.1
+description = barnes' new testament notes
+beta available = no
 server url = ftp://ftp.crosswire.org/pub/sword/raw
 
 [kaz.conf-kaz]
 name = [kaz]
-full_path = /home/mouse/HR-Tools/.bibles/mods.d/kaz.conf
+full_path = /home/mouse/HR-Tools/.bibles/mods.d/outdated/kaz.conf
 datapath = ./modules/texts/ztext/kaz/
 lang = kk
 version = 1.1.1
 description = киелі кітап
+beta available = no
 server url = ftp://ftp.crosswire.org/pub/sword/raw
 
