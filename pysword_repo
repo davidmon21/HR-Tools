@@ -215,7 +215,7 @@ def download_repos():
 	
 			shutil.unpack_archive(localfile,tempdir)
 			directorylist = os.listdir(os.path.join(tempdir,repo_dir))
-			dontcopy = process_mod_confs(directorylist, process_url, config[server]['beta'])
+			dontcopy = process_mod_confs(directorylist, url, config[server]['path'], proto, config[server]['beta'])
 			os.remove(localfile)
 			
 			langstring=""
@@ -253,7 +253,7 @@ def initiate_repo():
 	
 	download_repos()
 	
-def process_mod_confs(listit,server,beta):
+def process_mod_confs(listit, server, serverpath, serverproto, beta):
 	config = configparser.ConfigParser()
 	config2 = configparser.ConfigParser()
 	outdated = os.path.join(repo_path,"outdated")
@@ -289,7 +289,10 @@ def process_mod_confs(listit,server,beta):
 				packageinfo['beta available'] = 'yes'
 			else:
 				packageinfo['beta available'] = 'no'
+		
 		packageinfo['server url'] = server
+		packageinfo['server path'] = serverpath
+		packageinfo['server proto'] = serverproto
 		
 		#check if package is in config
 		if packname in config:
@@ -418,8 +421,10 @@ def read_mod_conf(package):
 			if normalizedkeyname == 'version':
 				packageinfo['version'] = normalizedvalue
 	return packageinfo
+
 def search_description_module(string):
 	pass
+
 def find_module(modulename, outdated=False, beta=False, lang=""):
 	config = configparser.ConfigParser()
 	if outdated:
@@ -454,26 +459,69 @@ def find_module(modulename, outdated=False, beta=False, lang=""):
 					modules.append([modulename+a+b+modulename+b+langu,config[modulename+a+b+modulename+b+langu]])
 				elif modulename+b+langu in config.keys():
 					modules.append([modulename+b+langu,config[modulename+b+langu]])
-	return modules 
-#def list_local_repo(argf = ""):
-	
-	
-	#config = configparser.ConfigParser()
-	#config.read(configfile)
-	#print(config.sections('PACKAGES', raw=False, 'Description'))
-	#config.close()
-	# direc = os.path.join(swordpath, repodir)
-	# listit = 
-	# for count,package in enumerate(listit):
-		# package_list+="{}:{} version: {}\n\n    {}\n" .format((count+1),packageinfo['name'],package['name_file'], package['Version'],package['About'])
-	# pydoc.pager(package_list)
+	return modules
+
+def install_module(keyname, outdated=False, beta=False, preferzip=True):
+	config = configparser.ConfigParser()
+	installedconfig = configparser.ConfigParser()
+	if os.path.exists(pyrepo_list+".installed"):
+		installedconfig.read(pyrepo_list+".installed")
+	if outdated:
+		config.read(pyrepo_outdated_list)
+		if beta:
+			beta=False
+			print("cant do beta with outdated, derp")
+	else:
+		config.read(pyrepo_list)
+	if beta:
+		keyname+="-beta"
+	if keyname in config.keys():
+		print(config[keyname]['datapath'])
+		installpath = os.path.join(swordpath,config[keyname]['datapath'])
+		if os.path.exists(installpath) == False:
+			os.makedirs(installpath)
+		server_url = config[keyname]['server url']
+		if preferzip and not beta:
+			if config[keyname]['server path'].strip('/') == 'sword':
+				path = os.path.join(config[keyname]['server path'],'packages/rawzip')
+			else:
+				faye = config[keyname]['server path'].rsplit('/',1)
+				path = os.path.join(faye[0],'packages/rawzip')
+		else:
+			path = config[keyname]['server path']
+		try:
+			ftp = FTP(config[keyname]['server url'])
+			ftp.login()
+			files = ftp.nlst(path)
+		except:
+			print("No files at path")
+			return False
+		
+		theurl = config[keyname]['server proto']+config[keyname]['server url']
+		if preferzip:
+			print(path)
+			for x in files:
+				if x.lower() == os.path.join(path,config[keyname]['name'].strip('[]')+".zip"):
+					download = urllib.parse.urljoin(theurl,x)
+					
+					urllib.request.urlretrieve(download,os.path.join(installpath,os.path.basename(x)))
+		else:
+			for x in files:
+				download = url.parse.urljoin(theurl,x)
+				print("retrieve")
+				urllib.request.urlretrieve(download,os.path.join(installpath,os.path.basename(x)))
+		installedconfig[keyname] = config[keyname]
+		with open(pyrepo_list+".installed",'w') as conf2:
+			installedconfig.write(conf2)
+		return config[keyname]
+			
 
 initialize()
-initiate_repo()
-update_repo_list()
-download_repos()
-print(find_module('strongsgreek',outdated=True,lang="all",beta=True))
-
+#initiate_repo()
+#update_repo_list()
+#download_repos()
+print(find_module('drc'))
+install_module('drc.conf-drc')
 
 
 #list_local_repo()

@@ -1,0 +1,12 @@
+[drc.conf-drc]
+name = [drc]
+full_path = /home/mouse/HR-Tools/.bibles/mods.d/drc.conf
+datapath = ./modules/texts/ztext/drc/
+lang = en
+description = douay-rheims bible, challoner revision
+version = 2.0
+beta available = no
+server url = ftp.crosswire.org
+server path = /pub/sword/raw
+server proto = ftp://
+

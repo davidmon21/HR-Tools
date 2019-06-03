@@ -6,7 +6,9 @@ version = 1.0.1
 lang = en
 description = free version of new english translation with limited notes
 beta available = no
-server url = ftp://ftp.crosswire.org/pub/sword/raw
+server url = ftp.crosswire.org
+server path = /pub/sword/raw
+server proto = ftp://
 
 [nettext.conf-nettext]
 name = [nettext]
@@ -16,7 +18,9 @@ version = 1.0.0
 lang = en
 description = new english translation text only with footnote markers
 beta available = no
-server url = ftp://ftp.crosswire.org/pub/sword/raw
+server url = ftp.crosswire.org
+server path = /pub/sword/raw
+server proto = ftp://
 
 [netnotesfree.conf-netnotesfree]
 name = [netnotesfree]
@@ -26,7 +30,9 @@ description = free version of net bible footnotes with limited notes
 version = 1.0.1
 lang = en
 beta available = no
-server url = ftp://ftp.crosswire.org/pub/sword/raw
+server url = ftp.crosswire.org
+server path = /pub/sword/raw
+server proto = ftp://
 
 [luther.conf-luther]
 name = [luther]
@@ -36,7 +42,9 @@ lang = en
 description = luther's commentary on selected bible passages
 version = 1.1
 beta available = no
-server url = ftp://ftp.crosswire.org/pub/sword/raw
+server url = ftp.crosswire.org
+server path = /pub/sword/raw
+server proto = ftp://
 
 [alzat.conf-alzat]
 name = [alzat]
@@ -46,7 +54,9 @@ lang = ar
 version = 1.0
 description = الذات للبابا شنودة الثالث
 beta available = no
-server url = ftp://ftp.crosswire.org/pub/sword/raw
+server url = ftp.crosswire.org
+server path = /pub/sword/raw
+server proto = ftp://
 
 [barnes.conf-barnes]
 name = [barnes]
@@ -56,7 +66,9 @@ lang = en
 version = 1.1
 description = barnes' new testament notes
 beta available = no
-server url = ftp://ftp.crosswire.org/pub/sword/raw
+server url = ftp.crosswire.org
+server path = /pub/sword/raw
+server proto = ftp://
 
 [kaz.conf-kaz]
 name = [kaz]
@@ -66,5 +78,7 @@ lang = kk
 version = 1.1.1
 description = киелі кітап
 beta available = no
-server url = ftp://ftp.crosswire.org/pub/sword/raw
+server url = ftp.crosswire.org
+server path = /pub/sword/raw
+server proto = ftp://
 
