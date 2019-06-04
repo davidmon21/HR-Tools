@@ -12,5 +12,4 @@ repo path = /home/mouse/HR-Tools/.bibles/mods.d
 repo tar.gz = mods.d.tar.gz
 time stamp filelist = /home/mouse/HR-Tools/.bibles/.ftptimestamps
 temporary directory = /home/mouse/HR-Tools/.bibles/.temp
-beta repos = false
 

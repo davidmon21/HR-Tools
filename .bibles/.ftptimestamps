@@ -13,7 +13,7 @@ pub/sword/masterrepolist.conf = 20171104232045
 ./mods.d.tar.gz = 20180607005632
 
 [ftp.ibt.org.ru]
-/pub/modsword/raw/mods.d.tar.gz = 20190602232032
+/pub/modsword/raw/mods.d.tar.gz = 20190603232034
 
 [ftp.ebible.org]
 /sword/mods.d.tar.gz = 20190603001319

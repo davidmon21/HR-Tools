@@ -2,7 +2,7 @@
 import os
 import random
 import argparse
-import "pysword_repo"
+import pysword_repo
 
 try:
 	from pysword.modules import SwordModules
@@ -32,9 +32,11 @@ def versePrint(version, book, chapter, verses):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='Grab bible verses!')
 	verse_help = "Display verse: book chapter:verse(s)\n {} --verse john 3:16-*".format(parser.prog)
-
-	parser.add_argument("--verse", "-v", help=verse_help, nargs=2, default=None, metavars=("book","verse"))
-	parser.add_argument("--version", "-b", help='Bible version', nargs=1, default=[u'DRC'])
+	
+	parser.add_argument("--initiate", "-i", help="Install sword repos", action='store_true')
+	parser.add_argument("--add_module", "-a", help="Install sword module from repo", nargs=1, default=None, metavar=("modulename"))
+	parser.add_argument("--verse", "-v", help=verse_help, nargs=2, default=None, metavar=("book","verse"))
+	parser.add_argument("--version", "-b", help='Bible version', nargs=1, default=[u'DRC'] metavar="Bible_Version")
 	args = parser.parse_args()
 
 	if args.verse != None : 
