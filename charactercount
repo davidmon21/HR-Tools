@@ -1,0 +1,21 @@
+#!/bin/bash
+echo "Typing test!!"
+IFS="
+"
+line=""
+declare -a quotes=( $(cat .quotes) )
+for (( x=0; x <= 4; x++ )) ; do
+    random=$(bc <<< $RANDOM%$(((${#quotes[@]}+1))))
+    line="$line$(awk '{ split($0, a,"–"); gsub(/“|”/,"", a[1]);print a[1]}' <<< ${quotes[$random]})"
+done
+echo $line
+start=$(date +%s)
+read line
+end=$(date +%s)
+count=$(wc -c <<< $line)
+time=$(bc <<< "$end - $start")
+printf "$(bc <<< "$count / ($time)") characters per second\n"
+printf "enter number of mistakes: "
+read mistakes
+printf "1 mistake every $(bc <<< "$count / $mistakes") characters\n"
+printf "A mistake every $(bc <<< "$time / $mistakes") seconds\n"

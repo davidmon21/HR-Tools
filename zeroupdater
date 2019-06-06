@@ -1,0 +1,11 @@
+#!/bin/bash
+systemctl --user stop zeronet
+x=($(ls -A $HOME/Sources/ZeroNet))
+
+for i in ${x[@]}; do 
+    rm -rf $HOME/HR-Networks/ZeroNet/$i
+    cp -Rp $HOME/Sources/ZeroNet/$i $HOME/HR-Networks/ZeroNet/$i
+done
+
+systemctl --user start zeronet
+

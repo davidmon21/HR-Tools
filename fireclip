@@ -120,5 +120,20 @@ else
 			fi
 			xclip -display $dis -selection CLIPBOARD -i
 		;;
+        -e|--excerpt)
+			if [ $2 == 'm' ]
+			then
+				dis=":0"
+                dis2=${ops[$3]}
+			elif [ $3 == 'm' ]
+            then
+				dis=${ops[$2]}
+                dis2=":0"
+            else
+                dis=${ops[$2]}
+                dis2=${ops[$3]}
+			fi
+			xclip -display $dis -selection primary -o | xclip -display $dis2 -selection CLIPBOARD -i
+        ;;
     esac
 fi

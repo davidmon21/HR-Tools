@@ -1,0 +1,215 @@
+#!/bin/bash
+center=1
+speedup=$".12"
+standardspeed=$"1.5"
+goingspeed=$standardspeed
+termwidth=$(tput cols)
+IFS="
+"
+
+assasinator=(
+'uuuuuuu'
+'uu$$$$$$$$$$$uu'
+'uu$$$$$$$$$$$$$$$$$uu'
+'u$$$$$$$$$$$$$$$$$$$$$u'
+'u$$$$$$$$$$$$$$$$$$$$$$$u'
+'u$$$$$$$$$$$$$$$$$$$$$$$$$u'
+'u$$$$$$$$$$$$$$$$$$$$$$$$$u'
+'u$$$$$$"   "$$$"   "$$$$$$u'
+'"$$$$"      u$u       $$$$"'
+'$$$u       u$u       u$$$'
+'$$$u      u$$$u      u$$$'
+'"$$$$uu$$$   $$$uu$$$$"'
+'"$$$$$$$"   "$$$$$$$"'
+'u$$$$$$$u$$$$$$$u'
+'u$"$"$"$"$"$"$u'
+'uuu        $$u$ $ $ $ $u$$       uuu'
+'u$$$$        $$$$$u$u$u$$$       u$$$$'
+'$$$$$uu      "$$$$$$$$$"     uu$$$$$$'
+'u$$$$$$$$$$$uu    """""    uuuu$$$$$$$$$$'
+'$$$$"""$$$$$$$$$$uuu   uu$$$$$$$$$"""$$$"'
+'"""      ""$$$$$$$$$$$uu ""$"""'
+'uuuu ""$$$$$$$$$$uuu'
+'u$$$uuu$$$$$$$$$uu ""$$$$$$$$$$$uuu$$$'
+'$$$$$$$$$$""""           ""$$$$$$$$$$$"'
+'"$$$$$"                      ""$$$$""'
+'$$$"                         $$$$"'
+)
+
+pentagram=(
+"___________________6666666___________________"
+"____________66666__________66666_____________" 
+"_________6666___________________666__________"
+"_______666__6____________________6_666_______"
+"_____666_____66_______________666____66______"
+"____66_______66666_________66666______666____"
+"___66_________6___66_____66___66_______666___"
+"__66__________66____6666_____66_________666__"
+"_666___________66__666_66___66___________66__"
+"_66____________6666_______6666___________666_"
+"_66___________6666_________6666__________666_"
+"_66________666_________________666_______666_"
+"_66_____666______66_______66______666____666_"
+"_666__666666666666666666666666666666666__66__"
+"__66_______________6____66______________666__"
+"___66______________66___66_____________666___"
+"____66______________6__66_____________666____"
+"_______666___________666___________666_______"
+"_________6666_________6_________666__________"
+"____________66666_____6____66666_____________"
+"___________________6666666___________________"
+)
+
+cat=(
+"/\_____/\\"
+"/  o   o  \\"
+"( ==  ^  == )"
+")         ("
+"(           )"
+"( (  )   (  ) )"
+"(__(__)___(__)__)"
+)
+
+manipulator=(
+" _  _            o           _       _        "
+" )\/,) ___  _ _  _  __  _    )) ___  )L __  __"
+"((\`(( ((_( ((\( (( ((_)((_( (( ((_( (( ((_)(| "
+"                    ))                        "
+)
+
+gay_curse()
+{
+
+    message=(
+    "Hocus Pocus, Cockus Woke US"
+    "May $* become Hornius Maximus, For Porkus"
+    "As above so below, mote it be done"
+    ${pentagram[@]}
+    )
+    
+    loop_print $center 3
+
+}
+
+character_assasination()
+{
+    message=(${assasinator[@]})
+    loop_print $center 0
+
+    message=(
+    "Loading character-assasinator..."
+    "Executing character assasination on target..."
+    "Locking on target: $*"
+    "Target lock acheived: initiating assasination"
+    )
+    
+    echo "Executing Character Assasination:"
+    reprinter '.15'
+    loading_bar
+    echo "Complete!"
+}
+
+manipulator()
+{
+    standardspeed=".05"
+    
+    message=(${manipulator[@]})
+    loop_print $center 0
+    
+    message=(
+    "Loading manipulator"
+    "Executing manipulator on target(s): $*"
+    "Locking on target"
+    "Target lock acheived: initiating manipulation"
+    )
+    
+    echo "Executing manipulation:"
+    reprinter '.15'
+    loading_bar
+    echo "Complete!"
+}
+
+catifier()
+{
+    standardspeed=".05"
+    
+    message=(${cat[@]})
+    loop_print $center 0
+    
+    message=(
+    "Loading catifier..."
+    "Executing catification on target(s)..."
+    "Locking on target(s): $*"
+    "Target(s) lock acheived: initiating catification"
+    )
+    echo "Executing catifier:"
+    reprinter '.15'
+    loading_bar
+    echo "Complete!"
+    
+
+}
+
+loading_bar()
+{
+    bar=""
+    for (( i=0; i < $termwidth-8; i++ )) ; do
+        size=$(((${termwidth}-9-${i})))
+        printf -v spaces "%${size}s"
+        bar+="="
+        printf "\r[${bar}${spaces}]%%%0.1f" $(bc <<< "(100*$i) / ($termwidth-6)")
+        sleep $(bc <<< "150 / $termwidth")
+    done
+    printf "\r[${bar}${spaces}]%%%0.1f" 100
+}
+
+reprinter()
+{
+    for (( i=0; i < ${#message[@]}; i++ )); do
+        printf "%*s\r" $((termwidth))
+        new_message=""
+        for word in ${message[$i]}; do
+            for letter in $(echo $word | grep -o .); do
+                new_message="$new_message$letter"
+                printf "$new_message\r"
+                sleep .1$(bc <<< $RANDOM%10)
+            done
+            new_message="$new_message "
+        done
+        sleep $1
+    done
+}
+
+loop_print()
+{
+    spacer=""
+    
+    for (( i=0; i < ${#message[@]}; i++ )) ; do
+        if [ $1 == $center ] ; then
+            spacer=$(printf "%*s" $(( ( termwidth - ${#message[$i]} ) / 2 )))
+        fi
+        if [ $i == $2 ] ; then goingspeed=$speedup ; fi
+        printf "$spacer ${message[$i]}"
+        printf "\n"
+        sleep $goingspeed
+    done
+}
+
+case $1 in
+    -gc|--gay-curse)
+        funcargs=( "$*" )
+        gay_curse ${funcargs[@]/$1/}
+    ;;
+    -m|--manipulator)
+        funcargs=( "$*" )
+        manipulator ${funcargs[@]/$1/}
+    ;;
+    -c|--catifier)
+        funcargs=( "$*" )
+        catifier ${funcargs[@]/$1/}
+    ;;
+    -a|--assasinator)
+        funcargs=( "$*" )
+        character_assasination ${funcargs[@]/$1/}
+    ;;
+esac
