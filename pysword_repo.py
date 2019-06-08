@@ -34,6 +34,7 @@ class PyswordRepo():
     betarepos = 'false'
     pymaster_list = ""
     
+    
     languages = [
         'leu', 'nhu', 'sr', 'yap', 'mgc', 'ded', 'ycn', 'kmu', 'yre', 'agx_cyrl', 'gup', 'sgz', 'kmh', 'yut', 'mvn', 'ffm', 'maz', 
         'pa', 'agm', 'huv', 'xtm', 'stp', 'box', 'yva', 'ktm', 'meq', 'myu', 'tl', 'poh', 'bjp', 'bao', 'tbo', 'quc', 'fi', 'rkb', 
@@ -232,7 +233,7 @@ class PyswordRepo():
                 returnList[server] = { "path":serverfilepath, "url":url, "proto":proto }
         
                 shutil.unpack_archive(localfile,self.tempdir)
-                directorylist = os.listdir(os.path.join(self.tempdir,self.repo_dir))
+                directorylist = glob.glob(os.path.join(os.path.join(self.tempdir,self.repo_dir),"*.conf"))
                 dontcopy = self.process_mod_confs(directorylist, url, config[server]['path'], proto, config[server]['beta'])
                 
                 os.remove(localfile)
@@ -270,7 +271,7 @@ class PyswordRepo():
         self.process_repo_list()
         
         self.download_repos()
-        
+    
     def process_mod_confs(self, listit, server, serverpath, serverproto, beta):
         config = configparser.ConfigParser()
         config2 = configparser.ConfigParser()
@@ -291,9 +292,10 @@ class PyswordRepo():
             configdancer = False
             
             temps = os.path.join(os.path.join(self.tempdir,self.repo_dir),package)
+            
             packageinfo = self.read_mod_conf(temps)
             
-            packname = "{}-{}".format(package,packageinfo['name'].strip("[]"))
+            packname = "{}-{}".format(os.path.basename(package),packageinfo['name'].strip("[]"))
             if beta == 'true':
                 betapath = os.path.join(self.repo_path,'beta')
                 if os.path.exists(betapath) == False:
@@ -301,7 +303,7 @@ class PyswordRepo():
                 if packname in config:
                     config[packname]['beta available'] = 'yes'
                 packname+="-beta"
-                package = package
+                package = os.path.basename(package)
                 packageinfo['full_path'] = os.path.join(betapath,package)
             if beta == 'false':
                 if packname+"-beta" in config:
@@ -337,7 +339,7 @@ class PyswordRepo():
                         config[packname] = packageinfo
                         if packname not in config2:
                             oldpath  = temp['full_path']
-                            newpath =  os.path.join(outdated,package)
+                            newpath =  os.path.join(outdated,os.path.basename(package))
                             temp['full_path'] = newpath
                             config2[packname] = temp
                             shutil.copy(oldpath, newpath)
@@ -352,6 +354,7 @@ class PyswordRepo():
                         #if config package isnt in outdated packages
                 
                 elif packname in config:
+                    package = os.path.basename(package)
                     shutil.copy(os.path.join(os.path.join(self.tempdir,self.repo_dir),package),os.path.join(os.path.join(self.tempdir,self.repo_dir),package+"-"+packageinfo['lang']))
                     os.remove(os.path.join(os.path.join(self.tempdir,self.repo_dir),package))
                     packname+="-"+packageinfo['lang']
@@ -382,6 +385,7 @@ class PyswordRepo():
                     else:
                         config[packname] = packageinfo
                 if dance:
+                    package = os.path.basename(package)
                     if package in config2:
                         outdated = os.path.join(self.repo_path,"outdated")
                         outdatedhere = os.path.join(outdated)
@@ -565,12 +569,14 @@ class PyswordRepo():
                 if x.lower() == os.path.join(zippath,mod['name'].strip('[]')+".zip"):
                     localfile = os.path.join(installpath,os.path.basename(x))
                     download = urllib.parse.urljoin(theurl,x)
+                    
                     try:
                         urllib.request.urlretrieve(download,localfile)
                     except:
                         theurl = urllib.parse.urljoin(theurl,zippath)
                         download = urllib.parse.urljoin(theurl,x)
                         urllib.request.urlretrieve(download,localfile)
+                    
                     installedfiles+="## "+localfile
                     success = True
                     
@@ -578,7 +584,6 @@ class PyswordRepo():
             for x in files:
                 localfile = os.path.join(installpath,os.path.basename(x))
                 download = urllib.parse.urljoin(theurl,x)
-                print(download)
                 try:
                     urllib.request.urlretrieve(download,localfile)
                 except:
@@ -588,6 +593,39 @@ class PyswordRepo():
                 installedfiles+="## "+localfile
                 success = True
         return [mod,success,installedfiles]
+    
+    def update_modules_list(self,uptobeta=False):
+        if not os.path.exists(self.pyrepo_list+".installed"):
+            return None
+        installedconfig = configparser.ConfigParser()
+        installedconfig.read(self.pyrepo_list+".installed")
+        config = configparser.ConfigParser()
+        config.read(self.pyrepo_list)
+        
+        def check(install):
+            if install in config.keys():
+                if version.parse(installedconfig[install]['version']) < version.parse(config[install]['version']):
+                    if installedconfig[install]['lang'] == config[install]['lang']:
+                        return [True,install]
+                    else:
+                        langedkey = install+"-"+installedconfig[install]['lang']
+                        if  langedkey in config.keys():
+                            if version.parse(installedconfig[install]['version']) < version.parse(config[langedkey]['version']):
+                                return [True,langedkey]
+                return [ False ]
+        
+        out_of_date_list = []
+        installed = self.list_installed_modules()
+        for install in installed:
+            ziper = check(install)
+            if ziper[0]:
+                out_of_date_list.append([install,ziper[1]])
+            if uptobeta:
+                betainstall = install+"-beta"
+                ziper = check(betainstall)
+                if ziper[0]:
+                    out_of_date_list.append([install,ziper[1]])
+        return out_of_date_list
     
     def install_module(self,keyname, outdated=False, beta=False, preferzip=True, custominstallpath=[False,""]):
         #success = False
@@ -605,7 +643,6 @@ class PyswordRepo():
             config.read(self.pyrepo_list)
         if beta:
             keyname+="-beta"
-                
         if keyname in config.keys():
             if custominstallpath[0]:
                 installpath = custominstallpath[1]
@@ -624,5 +661,114 @@ class PyswordRepo():
             installedconfig[installedkeyname]['installed files'] = info[2]
             with open(self.pyrepo_list+".installed",'w') as conf2:
                 installedconfig.write(conf2)
-            return [config[keyname], info[1]]
+            return [keyname, info[1]]
     
+    def list_installed_modules(self):
+        if os.path.exists(self.pyrepo_list+".installed"):
+            installedconfig = configparser.ConfigParser()
+            installedconfig.read(self.pyrepo_list+".installed")
+        else:
+            return None
+        returnlist = []
+        for key in installedconfig.keys():
+            if key != 'DEFAULT':
+                returnlist.append(key)
+        return returnlist
+    
+    def find_installed_modules(self):
+        found = []
+        if os.path.exists(self.repo_path):
+            config = configparser.ConfigParser()
+            modconfs = glob.glob(os.path.join(self.repo_path,"*.conf*"))
+            ibm_path = os.path.join(self.swordpath,"ibm")
+            ibm_path_confs = os.path.join(ibm_path,"modules")
+            for modconf in modconfs:
+                if not os.path.isdir(modconf):
+                    packageinfo = self.read_mod_conf(modconf)
+                    key = os.path.basename(modconf)+"-"+packageinfo['name'].strip('[]')
+                    if 'datapath' in packageinfo:
+                        fulldatapath = os.path.join(self.swordpath,packageinfo['datapath'])
+                        if os.path.exists(fulldatapath):
+                            filelist = os.listdir(fulldatapath)
+                            if len(filelist) != 0:
+                                ibm_location = os.path.join(ibm_path,packageinfo['datapath'])
+                                if not os.path.exists(ibm_location):
+                                    os.makedirs(ibm_location)
+                                installedfiles = ""
+                                for thefile in filelist:
+                                    localfile = os.path.join(ibm_location,thefile)
+                                    oglocalfile = os.path.join(self.swordpath,os.path.join(packageinfo['datapath'],thefile))
+                                    installedfiles+="## "+localfile
+                                    shutil.copy(oglocalfile,localfile)
+                                    os.remove(oglocalfile)
+                                config[key] = packageinfo
+                                config[key]['installed files'] = installedfiles
+                                config[key]['datapath'] = os.path.join("ibm",packageinfo['datapath'])
+                                shutil.copy(modconf,os.path.join(ibm_path_confs,os.path.basename(modconf)))
+                                found.append(key)
+            
+            with open(self.pyrepo_list+".installed",'w') as conf2:
+                config.write(conf2)
+        return found
+
+    def move_module(self, oldmodule, newmodule):
+        installedconfig = configparser.ConfigParser()
+        installedconfig.read(self.pyrepo_list+".installed")
+        config = configparser.ConfigParser()
+        config.read(self.pyrepo_list)
+        installedfiles = installedconfig[oldmodule]['installed files'].split("## ")
+        installedfiles.remove("")
+        confdata_path = os.path.join(os.path.join(self.swordpath,config[newmodule]['datapath']))
+        if not os.path.exists(confdata_path):
+            os.makedirs(confdata_path)
+        newinstall_line=""
+        for swordfile in installedfiles:
+            newfile = os.path.join(confdata_path,os.path.basename(swordfile))
+            shutil.copy(swordfile,newfile)
+            os.remove(swordfile)
+            newinstall_line+="## "+newfile
+        del installedconfig[oldmodule]
+        installedconfig[newmodule] = config[newmodule]
+        installedconfig[newmodule]['installed files'] = newinstall_line
+        with open(self.pyrepo_list+".installed", 'w') as conf2:
+            installedconfig.write(conf2)
+            
+    def bootstrap_ibm(self):
+        found = self.find_installed_modules()
+        self.initiate_repo()
+        modules = self.update_modules_list()
+        didnt_make_it = []
+        if len(modules) == 0:
+            for module in found:
+                self.move_module(module,module)
+                    
+        else:
+            for module in modules:
+                if module[0] != module[1]:
+                    self.move_module(module[0],module[1])
+                else:
+                    didnt_make_it.append(module[0])
+                found.remove(module[0])
+            for module in found:
+                self.move_module(module,module)
+                
+        return didnt_make_it
+
+
+                            
+                            
+
+
+#pyrepoz = PyswordRepo(swrdpath = YOURSWORDPATHHERE ,repoconf=".heathenrepo")
+#did = pyrepoz.bootstrap_ibm()
+#print(did)
+#pyrepoz.initiate_repo()
+#pyrepoz.update_repo_list()
+#pyrepoz.download_repos()
+#pyrepoz.install_module('drc.conf-drc')
+#pyrepoz.find_installed_modules()
+#listinstall = pyrepoz.update_modules_list()
+#pyrepoz.install_module('augustine.conf-augustine-ru')
+#print(listinstall)
+#for x in listinstall:
+#    pyrepoz.install_module(x[1])
