@@ -238,13 +238,9 @@ class PyswordRepo():
                 
                 os.remove(localfile)
                 
-                for files in dontcopy[0]:
+                for files in dontcopy:
                     thefile = os.path.join(os.path.join(self.tempdir,self.repo_dir),files)
                     shutil.copy(thefile, outdated)
-                    os.remove(thefile)
-                    
-                for files in dontcopy[1]:
-                    thefile = os.path.join(os.path.join(self.tempdir,self.repo_dir),files)
                     os.remove(thefile)
                     
                 directorylist = os.listdir(os.path.join(self.tempdir,self.repo_dir))
@@ -286,7 +282,6 @@ class PyswordRepo():
             config2.read(self.pyrepo_outdated_list)
             
         returnlist = []
-        returnlist2 = []
         for package in listit:
             dance = False
             configdancer = False
@@ -331,29 +326,33 @@ class PyswordRepo():
                 
                 ###############
                 #########33
+
                 if packageinfo['lang'] == config[packname]['lang']:
                     #if outdated configs named package is less than the new one
-                    if version.parse(config[packname]['version']) <= version.parse(packageinfo['version']):
+                    
+                    if version.parse(config[packname]['version'].strip().rstrip()) <= version.parse(packageinfo['version'].strip().rstrip()):
                         temp = dict(config[packname])
                         del config[packname]
                         config[packname] = packageinfo
+                        if not os.path.exists(outdated):
+                            os.makedirs(outdated)
                         if packname not in config2:
                             oldpath  = temp['full_path']
                             newpath =  os.path.join(outdated,os.path.basename(package))
                             temp['full_path'] = newpath
                             config2[packname] = temp
                             shutil.copy(oldpath, newpath)
+                            os.remove(oldpath)
                         else:
                             dance = True
                             dancer = temp
-                            configdancer = True
                     else:
                         dance = True
                         dancer = packageinfo
-                        configdancer = False
+                        returnlist.append(package)
                         #if config package isnt in outdated packages
                 
-                elif packname in config:
+                else:
                     package = os.path.basename(package)
                     shutil.copy(os.path.join(os.path.join(self.tempdir,self.repo_dir),package),os.path.join(os.path.join(self.tempdir,self.repo_dir),package+"-"+packageinfo['lang']))
                     os.remove(os.path.join(os.path.join(self.tempdir,self.repo_dir),package))
@@ -361,12 +360,13 @@ class PyswordRepo():
                     package+="-"+packageinfo['lang']
                     
                     packageinfo['full_path'] = os.path.join(self.repo_path,package)
-                    
                     if packname in config:
                         if version.parse(config[packname]['version']) <= version.parse(packageinfo['version']):
                             temp = dict(config[packname])
                             del config[packname]
                             config[packname] = packageinfo
+                            if not os.path.exists(outdated):
+                                os.makedirs(outdated)
                             if packname not in config2:
                                 oldpath  = temp['full_path']
                                 newpath =  os.path.join(outdated,package)
@@ -376,21 +376,22 @@ class PyswordRepo():
                             else:
                                 dance = True
                                 dancer = temp
-                                configdancer = True
                         else:
                             dance = True
                             dancer = packageinfo
-                            configdancer = False
+                            returnlist.append(package)
                             #if config package isnt in outdated packages
                     else:
                         config[packname] = packageinfo
                 if dance:
                     package = os.path.basename(package)
-                    if package in config2:
+                    if packname in config2:
                         outdated = os.path.join(self.repo_path,"outdated")
+                        if not os.path.exists(outdated):
+                            os.makedirs(outdated)
                         outdatedhere = os.path.join(outdated)
                         if configdancer:
-                            shutil.copy(os.path.join(outdatedhere,package),dancer['full_path'])
+                            shutil.copy(dancer['full_path'],os.path.join(outdatedhere,package))
                             os.remove(dancer['full_path'])
                             dancer['full_path'] = os.path.join(outdatedhere,package)
                         if version.parse(dancer['version']) < version.parse(config2[packname]['version']):
@@ -399,27 +400,21 @@ class PyswordRepo():
                                 config2[outdated_key] = dancer
                                 oldpath = dancer['full_path']
                                 config2[outdated_key]['full_path'] = os.path.join(outdatedhere,package)
-                                if not configdancer:
-                                    returnlist.append(package)
                         else:
                             outdated_key = "{}-{}".format(packname,config2[packname]['version'])
                             if outdated_key in config2:
                                 if version.parse(config2[packname]) > version.parse(config2[outdated-key]['version']):
                                     del config2[outdated-key]
                                     config2[outdated-key] = config2[packname]
-                                    if not configdancer:
-                                        returnlist.append(package)
                                     del config2[packname]
                                     config2[packname] = dancer
-                                else:
-                                    if not configdancer:
-                                        returnlist2.append(package)
+                                    
                             else:
                                 config2[outdated_key] = config2[packname]
                                 del config2[packname]
                                 config2[packname] = dancer
-                                if not configdancer:
-                                    returnlist.append(package)
+                    else:
+                        config2[packname] = dancer            
     
             else:
                 config[packname] = packageinfo
@@ -429,7 +424,7 @@ class PyswordRepo():
         with open(self.pyrepo_outdated_list,'w') as conf2:
             config2.write(conf2)
     
-        return [returnlist, returnlist2]
+        return returnlist
         
             
         
@@ -639,10 +634,12 @@ class PyswordRepo():
             if beta:
                 beta=False
                 print("cant do beta with outdated, derp")
+                return None
         else:
             config.read(self.pyrepo_list)
         if beta:
-            keyname+="-beta"
+            if keyname+"-beta" in config.keys():
+                keyname+="-beta"
         if keyname in config.keys():
             if custominstallpath[0]:
                 installpath = custominstallpath[1]
@@ -662,6 +659,7 @@ class PyswordRepo():
             with open(self.pyrepo_list+".installed",'w') as conf2:
                 installedconfig.write(conf2)
             return [keyname, info[1]]
+        return None
     
     def list_installed_modules(self):
         if os.path.exists(self.pyrepo_list+".installed"):
@@ -675,13 +673,45 @@ class PyswordRepo():
                 returnlist.append(key)
         return returnlist
     
+    def strapit(self, found):
+        installed = configparser.ConfigParser()
+        installed.read(self.pyrepo_list+".installed") 
+        ibm_path = os.path.join(self.swordpath,"ibm")
+        if not os.path.exists(ibm_path):
+            os.makedirs(ibm_path)
+        ibm_path_confs = os.path.join(ibm_path,"mods.d")
+        if not os.path.exists(ibm_path_confs):
+            os.makedirs(ibm_path_confs)
+        for key in found:
+            ibm_location = os.path.join(ibm_path,installed[key]['datapath'])
+            if not os.path.exists(ibm_location):
+                os.makedirs(ibm_location)
+            files = installed[key]['installed files'].split("## ")
+            files.remove('')
+            newinstallfiles = ""
+            for thefile in files:
+                newfile = os.path.join(ibm_location,os.path.basename(thefile))
+                shutil.copy(thefile,newfile)
+                newinstallfiles+="## "+newfile
+                os.remove(thefile)
+            modconf = installed[key]['full_path']
+            installed[key]['full_path'] = os.path.join(ibm_path_confs,os.path.basename(modconf))
+            installed[key]['installed files'] = newinstallfiles
+            installed[key]['datapath'] = os.path.join("ibm",installed[key]['datapath'])
+            shutil.copy(modconf,installed[key]['full_path'])
+        with open(self.pyrepo_list+".installed", 'w') as conf:
+            installed.write(conf)
+            
+        
+    
     def find_installed_modules(self):
         found = []
         if os.path.exists(self.repo_path):
             config = configparser.ConfigParser()
+            if os.path.exists(self.pyrepo_list+".installed"):
+                config.read(self.pyrepo_list+".installed")
             modconfs = glob.glob(os.path.join(self.repo_path,"*.conf*"))
-            ibm_path = os.path.join(self.swordpath,"ibm")
-            ibm_path_confs = os.path.join(ibm_path,"modules")
+
             for modconf in modconfs:
                 if not os.path.isdir(modconf):
                     packageinfo = self.read_mod_conf(modconf)
@@ -691,20 +721,18 @@ class PyswordRepo():
                         if os.path.exists(fulldatapath):
                             filelist = os.listdir(fulldatapath)
                             if len(filelist) != 0:
-                                ibm_location = os.path.join(ibm_path,packageinfo['datapath'])
-                                if not os.path.exists(ibm_location):
-                                    os.makedirs(ibm_location)
+
                                 installedfiles = ""
+
                                 for thefile in filelist:
-                                    localfile = os.path.join(ibm_location,thefile)
-                                    oglocalfile = os.path.join(self.swordpath,os.path.join(packageinfo['datapath'],thefile))
-                                    installedfiles+="## "+localfile
-                                    shutil.copy(oglocalfile,localfile)
-                                    os.remove(oglocalfile)
-                                config[key] = packageinfo
-                                config[key]['installed files'] = installedfiles
-                                config[key]['datapath'] = os.path.join("ibm",packageinfo['datapath'])
-                                shutil.copy(modconf,os.path.join(ibm_path_confs,os.path.basename(modconf)))
+                                    localfile = os.path.join(self.swordpath,os.path.join(packageinfo['datapath'],thefile))
+                                    installedfiles+="## "+localfile  
+                                if key not in config.keys():
+                                    config[key] = packageinfo
+                                else:
+                                    del config[key]
+                                    config[key] = packageinfo
+                                config[key]['installed files'] = installedfiles                               
                                 found.append(key)
             
             with open(self.pyrepo_list+".installed",'w') as conf2:
@@ -735,6 +763,7 @@ class PyswordRepo():
             
     def bootstrap_ibm(self):
         found = self.find_installed_modules()
+        self.strapit(found)
         self.initiate_repo()
         modules = self.update_modules_list()
         didnt_make_it = []
@@ -752,7 +781,7 @@ class PyswordRepo():
             for module in found:
                 self.move_module(module,module)
                 
-        return didnt_make_it
+        return found
 
 
                             

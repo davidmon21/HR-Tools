@@ -113,7 +113,7 @@ def grab_module():
             thebiblepath = os.path.dirname(installfiles[0])
         version = modules[0][1]['name'].strip('[]').upper()
     else:
-        printf("You need a bible for what you are trying to do, maybe install one with -a")
+        print("You need a bible for what you are trying to do, maybe install one with -a")
         exit(1)
 
 def add_to_notes(bookvernotes):
@@ -173,21 +173,21 @@ def compare_verse_lines(compare,compare2):
             bookver = comparison[2]
             chapter = comparison[3][0]
         elif not comparison[0]:
-            bookvers.append(bookver)
-            chapterverses.append(comparison[1])
-            notes.append(compare2[x].strip().rstrip())
-            compare2.pop(x)
-            comparison = compare_line(compare[x],compare2[x],verse, chapter,version)
-            verse = comparison[3][1]
-            chapter = comparison[3][0]
-            while not comparison[0]:
+            def go_on():
                 bookvers.append(bookver)
                 chapterverses.append(comparison[1])
                 notes.append(compare2[x].strip().rstrip())
                 compare2.pop(x)
+            go_on()    
+            comparison = compare_line(compare[x],compare2[x],verse, chapter,version)
+            verse = comparison[3][1]
+            chapter = comparison[3][0]
+            while not comparison[0]:
+                go_on()
                 comparison = compare_line(compare[x],compare2[x],verse, chapter,version)
                 verse = comparison[3][1]
                 chapter = comparison[3][0]
+                
         else:
             verse = comparison[3][1]
             chapter = comparison[3][0]
@@ -212,88 +212,178 @@ def grab_and_open():
             exit(1)
 
 def heathen_first_run(handlingfunction):
+    heathenconf = configparser.ConfigParser()
     print("Welcome to heathen!")
-    answer = input("Do you have an existing sword path?(y/n)").lower()
+    answer = handlingfunction("Do you have an existing sword path?(y/n)").lower()
+    
     if 'y' in answer:
         answer = handlingfunction("Enter your sword directory path: ")
         biblepath = answer.strip().rstrip()
-        heathenconf['MAIN']['sword path'] = biblepath
+        
+        
         pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
         
-        pyrepoz.bootstrap_ibm()
-        
+        answer = handlingfunction("Would you like heathen to manage your repo?(y/n): ")
+        if 'y' in answer:
+            installedmodules = pyrepoz.bootstrap_ibm()
+            repo_management = 'y'
+        elif 'n' in answer:
+            installedmodules = pyrepoz.find_installed_modules()
+            repo_management = 'n'
         installedmodules = pyrepoz.list_installed_modules()
         installedmodslen = range(0,len(installedmodules))
         for x in installedmodslen:
-            print(str(x+1)+": "+installedmodules[x][0]+"\n"+installedmodules[x][1]['about'])
+            print(str(x+1)+": "+installedmodules[x])
         answer = handlingfunction("Select module as default version: ")
         if answer.isdigit and (int(answer)-1) in installedmodslen:
-            version = installedmodules[int(answer-1)][0]
-            heathenconf['MAIN']['version'] = version
+            version = installedmodules[int(answer)-1][0]
+        heathenconf['MAIN'] = {'swordpath':biblepath, 'version':version, 'repo management':repo_management }
         
     elif 'n' in answer:
         biblepath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles")
-        heathenconf['MAIN']['sword path'] = biblepath
-        
+        if not os.path.exists(biblepath):
+            os.makedirs(biblepath)
         pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
         pyrepoz.initiate_repo()
         pyrepoz.update_repo_list()
         pyrepoz.download_repos()
         pyrepoz.install_module('drc.conf-drc')
         version = 'drc.conf-drc'
-        heathenconf['MAIN']['version'] = version
-        return pyrepoz
+        heathenconf['MAIN'] = { 'swordpath':biblepath, 'version':version, 'repo management':'y' }
+        for key in heathenconf['MAIN'].keys():
+            print(key)
+        
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.heathen'),'w') as conf2:
+        heathenconf.write(conf2)
 
-heathenconfig = os.path.join(os.path.realpath(__file__),'.heathen')
+###############################################
+#HEATHAN CLI ONLY FUNCTIONS####################
+###############################################
 
+def list_select(modules,configz):
+    modlen = len(modules)
+    modrange = range(0,modlen)
+    selected = False
+    for item in modrange:
+        if 'about' in modules[item][1]:
+            about = modules[item][1]['about']
+        else:
+            about = "None available"
+        print(str(item+1)+": "+module[item][0]+"\n"+about)
+    while not selected:
+        pack = input("Package: ")
+        if int(pack) in modrange:
+            selected = True
+            return module[int(pack)-1][0]
+        else:
+            print("Incorrect selection")
+
+
+
+heathenconfig = os.path.join(os.path.dirname(os.path.realpath(__file__)),'.heathen')
 if __name__ == '__main__':
+    
+    print("""    _     _ _______ _______ _______ _     _ _______ __   _
+    |_____| |______ |_____|    |    |_____| |______ | \  |
+    |     | |______ |     |    |    |     | |______ |  \_|
+    [                   Read Your Bible                  ]  """)
+    
     heathenconf = configparser.ConfigParser()
     if os.path.exists(heathenconfig):
-        with open(heathenconfig, 'r') as conf:
-            heathenconf.read(conf)
-        biblepath = heathenconf['MAIN']['sword path']
+        heathenconf.read(heathenconfig)
+        
+        biblepath = heathenconf['MAIN']['swordpath']
         pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
     else:
-        pyrepoz = heathen_first_run(input)
-        
+        heathen_first_run(input)
+        pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
+    
     parser = argparse.ArgumentParser(description='Grab bible verses!')
     
     verse_help = "Display verse: book chapter:verse(s)\n {} --verse john 3:16-+\n+ signifies final verse.".format(parser.prog)
     reader_help = "Display chapter or verses in editor:\nbook chapter:verse(s)(-chapter):verse(s)\n {} --verse john 3-3".format(parser.prog)
     
-    parser.add_argument("--initiate", "-i", help="Install sword repos", action='store_true')
-    parser.add_argument("--prefer_zip","-z", help="Prefer zip packages.", action='store_true')
-    parser.add_argument("--add_module", "-a", help="Install sword module from repo", nargs=1, default=None, metavar=("modulename"))
     parser.add_argument("--verse", "-v", help=verse_help, nargs=2, default=None, metavar=("book","chapter:verse(s)"))
     parser.add_argument("--reader", "-r", help=reader_help, nargs=2, default=None, metavar=("book","chapter(:verses)"))
-    parser.add_argument("--version", "-b", help='Bible version', nargs=1, default=['drc'], metavar=("version"))
-    parser.add_argument("--verse_numbers", "-n", help='print verse numbers', action='store_true')
+    parser.add_argument("--version", "-b", help='Bible version', nargs=1, default=[heathenconf['MAIN']['version']], metavar=("version"))
     parser.add_argument("--take_notes", "-t", help='Record not for verses', action='store_true')
+    parser.add_argument("--list", "-l", help='List books in module', nargs=1, default=['ot,nt'], metavar=("books"))
+    
+    parser.add_argument('--add_module', '-a', nargs=1, default=None, metavar=("module"))
+    parser.add_argument('--uninstall_module', '-u', nargs=1, default=None, metavar=("module"))
+    parser.add_argument("--list_installed", "-i", help="list installed repos", action='store_true')
+    parser.add_argument('--upgrade_modules', '-g', help="Upgrade all installed modules" ,action='store_true')
+    parser.add_argument('--sync_repos', '-y', help="Update repositories", action='store_true')
+    parser.add_argument("--prefer_zip","-z", help="Prefer zip packages.", action='store_true')
+    parser.add_argument("--beta","-beta", help="Access beta.", action='store_true')
+    
+    
     args = parser.parse_args()
     
     if args.add_module != None:
         isitinstalled = pyrepoz.find_module(args.add_module[0], installed=True)
         if len(isitinstalled) == 0:
             modules = pyrepoz.find_module(args.add_module[0])
-            if len(modules) >= 1:
-                pyrepoz.install_module(modules[0][0], preferzip=args.prefer_zip)
+            modlen = len(modules)
+            if modlen == 1:
+                pyrepoz.install_module(modules[0][0], beta=args.beta, preferzip=args.prefer_zip)
+            elif modlen != 0:
+                pyrepoz.install_module( list_select(modules,pyrepoz.pyrepo_list), beta=args.beta, preferzip=args.prefer_zip)
         else:
-            print("{} is installed.".format(args.add_module[0]))
+            print("module is installed.")
     
-    
-    if args.initiate:
-        go_on = True
-        if os.path.exists(pyrepoz.pyrepo_list):
-            answer = input("You have already initialized your repos, ar you sure you want to do that again?(y/N): ")
-            if answer != 'y':
-                go_on = False
-        if go_on:
-            pyrepoz.initiate_repo()
+    elif args.uninstall_module != None:
+        modules = pyrepoz.find_module(args.uninstall_module[0], installed=True)
+        if len(modules) != 0:
+            modlen = len(modules)
+            if modlen == 1:
+                pyrepoz.uninstall_module(modules[0][0])
+            elif modlen != 0:
+                pyrepoz.uninstall_module(list_select(modules,pyrepoz.pyrepo_list+".installed"))
+        else:
+            print("module isnt installed")
+    elif args.list_installed:
+        reeps = pyrepoz.list_installed_modules()
+        for item in range(0, len(reeps)):
+            print(str(item+1)+": "+reeps[item])
+            
+    elif args.upgrade_modules:
+        if args.sync_repos:
             pyrepoz.update_repo_list()
             pyrepoz.download_repos()
+        upgradable = pyrepoz.update_modules_list(uptobeta=args.beta)
+        if len(upgradable) != 0:
+            success=False
+            modrange = range(0,len(upgradable))
+            printstring = ""
+            for item in modrange:
+                printstring+=str(item+1)+": "+upgradable[item]+"\n"
+            print(printstring)
+            answer = input("upgrade them all?(y/n):")
+            if 'y' in answer:
+                for module in upgradable:
+                    pyrepoz.uninstall_module(module)
+                    pyrepoz.install_module(module, beta=args.beta, preferzip=args.preferzip)
+            elif 'n' in answer:
+                while not success:
+                    print(printstring)
+                    items = (input("Enter what you would like to upgrade(numbers) seperated by spaces: ")).strip().rstrip().split(" ")
+                    items.remove("")
+                    success = True
+                    for item in items:
+                        if int(item) not in modrange:
+                            success = False
+                for item in items:
+                    pyrepoz.uninstall_module(upgradable[item])
+                    pyrepoz.install(upgradable[item], beta=args.beta, preferzip=args.preferzip)
+            else:
+                print("Incorrect input.")
     
-    
-    if args.reader != None:
+    elif args.sync_repos:
+        pyrepoz.update_repo_list()
+        pyrepoz.download_repos()
+
+    elif args.reader != None:
         grab_and_open()
         
         try:
@@ -321,26 +411,26 @@ if __name__ == '__main__':
         
         
         
-    if args.verse != None:
+    elif args.verse != None:
         grab_module()
         open_bible()
         result = compile_verse_text(args.verse[0], args.verse[1])
         print(result)
-            
-    
-    if args.take_notes:
-        if args.verse != None:
-            config = configparser.ConfigParser()
+        config = configparser.ConfigParser()
+        if args.take_notes:
             if os.path.exists(heathennotes):
                 config.read(heathennotes)
             chapterverse = args.verse[1].replace(':','_')
-            bookver = args.verse[0]+"-"+version
-            if chapterverse in config[bookver]:
+            bookver = version.lower()+"-"+args.verse[0]
+            if (bookver in config) and (chapterverse in config[bookver].keys()):
                 lastnote = config[bookver][chapterverse]
                 note = input("last notes: {}\nnote: ".format(lastnote))
             else:
                 note = input("note: ")
             add_to_notes(zip([bookver],[chapterverse],[note]))
+    
+    else:
+        parser.print_help()
             
             
 
