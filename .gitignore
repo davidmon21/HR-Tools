@@ -69,3 +69,5 @@ heathentest1\.sh
 heathen2\.sh
 
 \.heathen
+
+__pycache__/

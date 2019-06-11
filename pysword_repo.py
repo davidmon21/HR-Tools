@@ -4,8 +4,8 @@ import os
 import urllib
 import configparser
 import shutil
-import pydoc
 import glob
+import re
 
 from urllib import parse
 from urllib import request
@@ -330,7 +330,7 @@ class PyswordRepo():
                 if packageinfo['lang'] == config[packname]['lang']:
                     #if outdated configs named package is less than the new one
                     
-                    if version.parse(config[packname]['version'].strip().rstrip()) <= version.parse(packageinfo['version'].strip().rstrip()):
+                    if version.parse(config[packname]['version'].strip().rstrip()) < version.parse(packageinfo['version'].strip().rstrip()):
                         temp = dict(config[packname])
                         del config[packname]
                         config[packname] = packageinfo
@@ -341,8 +341,11 @@ class PyswordRepo():
                             newpath =  os.path.join(outdated,os.path.basename(package))
                             temp['full_path'] = newpath
                             config2[packname] = temp
-                            shutil.copy(oldpath, newpath)
-                            os.remove(oldpath)
+                            try:
+                                shutil.copy(oldpath, newpath)
+                                os.remove(oldpath)
+                            except:
+                                print("hmm")
                         else:
                             dance = True
                             dancer = temp
@@ -403,7 +406,7 @@ class PyswordRepo():
                         else:
                             outdated_key = "{}-{}".format(packname,config2[packname]['version'])
                             if outdated_key in config2:
-                                if version.parse(config2[packname]) > version.parse(config2[outdated-key]['version']):
+                                if version.parse(config2[packname]['version']) > version.parse(config2[outdated-key]['version']):
                                     del config2[outdated-key]
                                     config2[outdated-key] = config2[packname]
                                     del config2[packname]
@@ -461,7 +464,7 @@ class PyswordRepo():
             config.read(self.pyrepo_list)
         for keyname in config.keys():
             if section in config[keyname]:
-                if string in config[keyname][section]:
+                if re.search(string.lower(), config[keyname][section].lower()):
                     returnlist.append([keyname,config[keyname]])
         return returnlist
     
@@ -788,14 +791,14 @@ class PyswordRepo():
                             
 
 
-#pyrepoz = PyswordRepo(swrdpath = YOURSWORDPATHHERE ,repoconf=".heathenrepo")
+#pyrepoz = PyswordRepo(swrdpath = "/home/user/HR-Tools/.bibles" ,repoconf=".heathenrepo")
 #did = pyrepoz.bootstrap_ibm()
 #print(did)
 #pyrepoz.initiate_repo()
 #pyrepoz.update_repo_list()
 #pyrepoz.download_repos()
 #pyrepoz.install_module('drc.conf-drc')
-#pyrepoz.find_installed_modules()
+#print(pyrepoz.search_section_module("king james",'about'))
 #listinstall = pyrepoz.update_modules_list()
 #pyrepoz.install_module('augustine.conf-augustine-ru')
 #print(listinstall)

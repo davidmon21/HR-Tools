@@ -5,6 +5,8 @@ import argparse
 import pysword_repo
 import configparser
 from datetime import datetime
+import pydoc
+import re
 
 try:
     from pysword.modules import SwordModules
@@ -17,7 +19,7 @@ except:
 biblepath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles")
 heathennotes = os.path.join(biblepath,".heathennotes")
 tempfiles =  os.path.join(biblepath,".tempfiles")
-version = "DRC"
+version = "drc"
 thebiblepath = ""
 bible = None
 
@@ -29,36 +31,61 @@ def open_bible():
         if checkeroo[1] == "zip":
             modules = SwordModules(thebiblepath)
             modules.parse_modules()
-            bible = modules.get_bible_from_module(version)
+            bible = modules.get_bible_from_module(version.upper())
         else:
             bible = SwordBible(thebiblepath)
     else:
         bible = SwordBible(thebiblepath)
-        
-def versePrint(version, book, chapter, verses):
-    string = ""
-    verses[0] = int(verses[0])
-    resultsarray = bible.get(books=[book], chapters=[int(chapter)], verses=verses).splitlines()
-    
-    if (int(verses[0]) == 1):
-        string+="\n{}, {}, {}\n\n".format(version, book.capitalize(), chapter)+resultsarray.pop(0)
-        verses.pop(0)
-    else:
-        string+="\n{}, {}, {}\n\n{}: {}".format(version, book.capitalize(), chapter, verses.pop(0),resultsarray.pop(0))
-    lines = zip(verses,resultsarray)
-    for number,verse in lines: string+="\n{}: ".format(number)+verse
-    return string 
 
-def compile_verse_text(bookline,verseline):
+def add_verse_numbers(versenumbers,verselines):
+    verses = versenumbers['verses']
+    chapter = versenumbers['chapter']
+    book = versenumbers['book']
+    returnlist = []
+    temp = list(verses)
+    if (int(verses[0]) == 1):
+        returnlist.append([{'verse':temp[0], 'chapter':chapter,'book':book}, verselines.pop(0)])
+        temp.pop(0)
+    
+    lines = zip(temp,verselines)
+    for number,verse in lines: returnlist.append([{'verse':number, 'chapter':chapter,'book':book},"\n{}: ".format(number)+verse])
+    return returnlist
+    
+    strip().rstrip().lower()
+
+def grabnotes_to_verses(verses,chapter,book):
+    config = configparser.ConfigParser()
+    if os.path.exists(heathennotes):
+        config.read(heathennotes)
+    else:
+        return [None,"no notes"]
+    print(verses)
+    returndict = {}
+    for verse in verses:
+        section = version+"-"+book+"-"+str(chapter)+"_"+str(verse)
+        if section in config.keys():
+            returnnotes=[]
+            for notes in config[section].keys():
+                returnnotes.append(config[section][notes])
+            returndict[section]=returnnotes
+    
+    return returndict
+                
+                    
+            
+
+def compile_verse_text(bookline,verseline, versenumbers=True, versenotes=False):
     grab_module()
     outputer = []    
     books = bookline.split(',')
     topparts = verseline.split(',')
+    returndictlist = []
+    #string=[]
     string=""
     if len(books) == 1 and len(topparts) != 1:
-        books = books*(len(topparts))
+        books = books*len(topparts)
     if len(topparts) == 1 and len(books) != 1:
-        topparts = topparts*len(topparts)
+        topparts = topparts*len(books)
     thedict = zip(books,topparts)
     for book,part in thedict:
         parts = part.split('-')
@@ -68,15 +95,15 @@ def compile_verse_text(bookline,verseline):
         if ':' in str(parts[0]):
             parts2 = parts[0].split(':')
             versespieces = part.split(':')[1]
-            chapter = parts2[0]
+            chapter = int(parts2[0])
             parts = versespieces.split('-')
             if len(parts) > 1:
                 verse2 = parts[1]
-                verse1 = parts[0]
+                verse1 = int(parts[0])
                 if verse2 == "+":
-                    verse2 = bible.get_structure().find_book(book)[1].chapter_lengths[int(chapter)-1]
-                
-                outputer.append([chapter, list(range(int(verse1),int(verse2)+1))])
+                    verse2 = bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1]
+                verse2 = int(verse2)
+                outputer.append([chapter, list(range(verse1,verse2+1))])
                 
             else:
                 outputer.append([chapter, [versespieces]])
@@ -84,20 +111,52 @@ def compile_verse_text(bookline,verseline):
             
         else:
             if parts[0] == '+':
-                for x in range(1,bible.get_structure().find_book(book)[1].num_chapters+1):
-                    verse2 = list(range(1,int(bible.get_structure().find_book(book)[1].chapter_lengths[int(x)-1])+1))
-                    outputer.append([x, verse2])
+                for chapter in range(1,bible.get_structure().find_book(book)[1].num_chapters+1):
+                    verse2 = list(range(1,int(bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1])+1))
+                    outputer.append([int(chapter), verse2])
             else:
-                verse2 = list(range(1,int(bible.get_structure().find_book(book)[1].chapter_lengths[int(chapter)-1])+1))
-                outputer.append([chapter, verse2])
-        
+                verse2 = list(range(1,int(bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1])+1))
+                outputer.append([int(chapter), verse2])
+        returnnotes = []
         for part in outputer:
             chapter=part[0]
             verses=part[1]
-            result = versePrint(version , book, chapter, verses)
-            string+=result+"\n"
+            
+            if verses[0] == '+':
+                verses = list(range(1,bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1]))
+            preserve = list(verses)
+            try:
+                verses[0] = int(verses[0])
+                results = bible.get(books=[book], chapters=[int(chapter)], verses=verses).splitlines()
+                returnresults = list(results)
+                if versenumbers:
+                    results = add_verse_numbers({'verses':verses, 'chapter':chapter, 'book':book}, results)
+                if versenotes and os.path.exists(heathennotes):
+                    notes = grabnotes_to_verses(preserve, chapter, book)
+                    returnnotes = dict(notes)
+                else: 
+                    returnnotes = {}
+                    notes = {}
+                string+="\n\n{}, {}, {}\n\n".format(version.upper(), book.title(), chapter)
+                while len(results)!= 0:
+                    currentresult = results.pop(0)
+                    currentverse = currentresult[0]['verse']
+                    string+=currentresult[1]
+                    if versenotes:
+                        section = "{}-{}-{}_{}".format(version.lower(),book.lower(),chapter,currentverse)
+                        if section in notes:
+                            for note in notes[section]:
+                                string+="\n"+(note)
+                        
+                returndictlist.append({'chapter':chapter, 'verses':verses, 'book':book, 'plain':returnresults, 'notes':returnnotes, 'string':string })
+                print(verses)
+            except:
+                string+="\n\nTried to grab verses that didnt exist, or error in name:{} {}:{}-{}\n\n".format(book,chapter,verses[0],verses[-1])
+                returndictlist.append({'chapter':None, 'verse':None, 'book':None, 'plain':None, 'notes':returnnotes, 'string':None })
+            
         outputer = []
-    return string
+    returndictlist.append(string)
+    return returndictlist
 
 def grab_module():
     global thebiblepath
@@ -111,92 +170,101 @@ def grab_module():
             thebiblepath = installfiles[0]
         else:
             thebiblepath = os.path.dirname(installfiles[0])
-        version = modules[0][1]['name'].strip('[]').upper()
+        version = modules[0][1]['name'].strip('[]')
     else:
         print("You need a bible for what you are trying to do, maybe install one with -a")
         exit(1)
 
-def add_to_notes(bookvernotes):
-    now = datetime.now()
-    date_time = now.strftime("%d-%m-%Y,%H-%M-%S")
+def add_to_notes(bookver_notes):
     config = configparser.ConfigParser()
     if os.path.exists(heathennotes):
         config.read(heathennotes)
-    for bookver,chapterverse,note in bookvernotes:
-        if bookver not in config.keys():
-            config[bookver] = {}
-            note = date_time+": "+note
-        else:
-            if chapterverse in config[bookver]:
-                lastnote = config[bookver][chapterverse]
-                note=date_time+": "+note+"\n"+lastnote
-                del config[bookver][chapterverse]
-            else:
-                note = date_time+": "+note
-        config[bookver][chapterverse] = note
+    for bookver_chapter_verse, newkey, note in bookver_notes:
+        if bookver_chapter_verse not in config.keys():
+            config[bookver_chapter_verse] = {}
+        elif newkey in config[bookver_chapter_verse] and not note.isspace():
+            lastnote = config[bookver_chapter_verse][newkey]
+            note=note+" "+lastnote
+            del config[bookver_chapter_verse][newkey]
+        config[bookver_chapter_verse][newkey] = note
     with open(heathennotes, 'w') as conf:
         config.write(conf)
 
-def compare_verse_lines(compare,compare2):
-    def compare_line(line, line2, verse, chapter ,version):
-        bookver = None
-        cleanline1 = line.strip().rstrip()
-        cleanline2 = line2.strip().rstrip()
-        status = False
-        if cleanline1 == cleanline2:
-            if version in cleanline1:
-                info = cleanline1.split(', ')
-                bookver = info[0].strip().rstrip().lower()+"-"+info[1].strip().rstrip().lower()
-                chapter = info[2].strip().rstrip()
-            elif cleanline1.split(':',1)[0].isdigit():
-                verse=int(cleanline1.split(':',1)[0])
-            else:
-                verse=1
-            status = True
-        chapterverse = str(chapter)+"_"+str(verse)
-        return [status, chapterverse, bookver,[chapter,verse]]
+def compare_verse_lines(compare,results,linenumbers=True,oldnotes=False):
+    try:
+        compare.remove("")
+    except: pass
+    try:
+        compare.remove("\n")
+    except: pass
+    try:
+        compare.remove(" ")
+    except: pass
     
-    bookvers=[]
-    chapterverses=[]
-    notes=[]
-    compare.remove('')
-    compare2.remove('\n')
-    if '' in compare2:
-        compare2.remove('')
-    subtractor=0
-    chapter = 0
-    verse = 1
-    for x in range(0,len(compare)):
-        comparison = compare_line(compare[x],compare2[x],verse, chapter,version)
-        chapterverse=comparison[1]
-        if comparison[2] != None:
-            bookver = comparison[2]
-            chapter = comparison[3][0]
-        elif not comparison[0]:
-            def go_on():
-                bookvers.append(bookver)
-                chapterverses.append(comparison[1])
-                notes.append(compare2[x].strip().rstrip())
-                compare2.pop(x)
-            go_on()    
-            comparison = compare_line(compare[x],compare2[x],verse, chapter,version)
-            verse = comparison[3][1]
-            chapter = comparison[3][0]
-            while not comparison[0]:
-                go_on()
-                comparison = compare_line(compare[x],compare2[x],verse, chapter,version)
-                verse = comparison[3][1]
-                chapter = comparison[3][0]
-                
-        else:
-            verse = comparison[3][1]
-            chapter = comparison[3][0]
-    while len(compare) != len(compare2):
-        bookvers.append(bookver)
-        chapterverses.append(comparison[1])
-        notes.append(compare2[x+1].strip().rstrip())
-        compare2.pop(x+1)
-    return zip(bookvers,chapterverses,notes)
+    result = results.pop(0)
+    verse = result['verses'][0]
+    chapter = result['chapter']
+    book = result['book']
+    lowerversion = version.lower()
+    bookver_chapter_verse = "{}-{}-{}_{}".format(lowerversion,book,chapter,verse)
+    date_time = now.strftime("%d-%m-%Y,%H-%M-%S")
+    notes = result['notes']
+    newnotes=[]
+    newkeys=[]
+    thesections=[]
+    newnote=""
+    
+    change_over = False
+    while len(compare) != 0:
+        go_on = True
+        line = compare.pop(0)
+        if change_over:
+            bookver_chapter_verse = "{}-{}-{}_{}".format(lowerversion, book, chapter, verse)
+            change_over = False
+            notes = result['notes']
+        
+        if linenumbers:
+            if re.match('[0-9]{1,3}:',line):
+                line = line.split(':',1)[1]
+        
+        line = line.strip().rstrip()
+        if len(result['plain']) != 0:
+            if result['plain'][0] == line:
+                result['plain'].pop(0)
+                if len(result['verses']) != 0:
+                    verse = result['verses'].pop(0)
+                go_on = False
+                change_over = True
+        
+        elif len(results) != 0:
+            #lastverse = verse
+            result = results.pop(0)
+            verse = result['verses'][0]
+            chapter = result['chapter']
+            book = result['book']
+            
+        
+        if line.lower() == version+", "+book+", "+str(chapter):
+            go_on =  False
+            change_over = False
+        
+        if oldnotes and go_on != False:
+            if bookver_chapter_verse in notes:
+                if len(notes[bookver_chapter_verse]) != 0:
+                    if line in notes[bookver_chapter_verse]:
+                        notes[bookver_chapter_verse].remove(line)
+                        go_on = False
+                change_over=False
+        
+        if go_on:
+            change_over = False
+            if not line.strip().rstrip().isspace() and (line != ""):
+                newnotes.append(line.strip().rstrip())
+                thesections.append(bookver_chapter_verse)
+            
+
+    newkeys = [date_time]*len(newnotes)
+    return zip(thesections, newkeys, newnotes)
 
 def grab_and_open():
     try:
@@ -282,12 +350,6 @@ def list_select(modules,configz):
 
 heathenconfig = os.path.join(os.path.dirname(os.path.realpath(__file__)),'.heathen')
 if __name__ == '__main__':
-    
-    print("""    _     _ _______ _______ _______ _     _ _______ __   _
-    |_____| |______ |_____|    |    |_____| |______ | \  |
-    |     | |______ |     |    |    |     | |______ |  \_|
-    [                   Read Your Bible                  ]  """)
-    
     heathenconf = configparser.ConfigParser()
     if os.path.exists(heathenconfig):
         heathenconf.read(heathenconfig)
@@ -300,16 +362,19 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser(description='Grab bible verses!')
     
-    verse_help = "Display verse: book chapter:verse(s)\n {} --verse john 3:16-+\n+ signifies final verse.".format(parser.prog)
+    verse_help = "Display verse: book chapter:verse(s)\n {} --verse john 3:16-+\n+ is basically * function.".format(parser.prog)
     reader_help = "Display chapter or verses in editor:\nbook chapter:verse(s)(-chapter):verse(s)\n {} --verse john 3-3".format(parser.prog)
     
-    parser.add_argument("--verse", "-v", help=verse_help, nargs=2, default=None, metavar=("book","chapter:verse(s)"))
-    parser.add_argument("--reader", "-r", help=reader_help, nargs=2, default=None, metavar=("book","chapter(:verses)"))
-    parser.add_argument("--version", "-b", help='Bible version', nargs=1, default=[heathenconf['MAIN']['version']], metavar=("version"))
-    parser.add_argument("--take_notes", "-t", help='Record not for verses', action='store_true')
-    parser.add_argument("--list", "-l", help='List books in module', nargs=1, default=['ot,nt'], metavar=("books"))
+    parser.add_argument("--verse", "-v", help=verse_help, nargs='?', default=None)
+    parser.add_argument("--reader", "-r", help=reader_help, nargs='?', default=None)
+    parser.add_argument("--version", "-b", help='Bible version', nargs=1, default=[heathenconf['MAIN']['version'].strip().rstrip().lower()], metavar=("version"))
+    parser.add_argument("--take_notes", "-t", help='Record note for verses', action='store_true')
+    parser.add_argument("--notes", "-n", help='View verse notes', action='store_true')
+    parser.add_argument("--list", "-l", help='List books in module', nargs='?', default=None)
     
     parser.add_argument('--add_module', '-a', nargs=1, default=None, metavar=("module"))
+    parser.add_argument('--search_modules', '-s', nargs='?', help="Specify section with -k default is about", default=None, metavar=("string-regex"))
+    parser.add_argument('--section', '-k', nargs='?', help="Section to search", default="about", metavar=("sectionname"))
     parser.add_argument('--uninstall_module', '-u', nargs=1, default=None, metavar=("module"))
     parser.add_argument("--list_installed", "-i", help="list installed repos", action='store_true')
     parser.add_argument('--upgrade_modules', '-g', help="Upgrade all installed modules" ,action='store_true')
@@ -319,6 +384,11 @@ if __name__ == '__main__':
     
     
     args = parser.parse_args()
+    
+    version = (args.version[0]).strip().rstrip().lower()
+    check = version.split('-')
+    if len(check) > 1:
+        version = check[1]
     
     if args.add_module != None:
         isitinstalled = pyrepoz.find_module(args.add_module[0], installed=True)
@@ -331,6 +401,13 @@ if __name__ == '__main__':
                 pyrepoz.install_module( list_select(modules,pyrepoz.pyrepo_list), beta=args.beta, preferzip=args.prefer_zip)
         else:
             print("module is installed.")
+    
+    if args.search_modules != None:
+        string=""
+        found = pyrepoz.search_section_module(args.search_modules,args.section)
+        for item in range(0,len(found)):
+            string+="\n{}:{}\n\n{}\n".format(item+1, found[item][0], found[item][1][args.section].replace("\par","").replace("colon",":").replace("percent","%"))
+        pydoc.pager(string)
     
     elif args.uninstall_module != None:
         modules = pyrepoz.find_module(args.uninstall_module[0], installed=True)
@@ -386,10 +463,8 @@ if __name__ == '__main__':
     elif args.reader != None:
         grab_and_open()
         
-        try:
-            results = compile_verse_text(args.reader[0], args.reader[1])
-        except:
-            print("The verse you are looking for likely doesnt exist.")
+        argx = args.reader.split('@')
+        results = compile_verse_text(argx[0], argx[1], versenotes=args.notes)
         
         if not os.path.exists(tempfiles):
             os.makedirs(tempfiles)
@@ -398,38 +473,63 @@ if __name__ == '__main__':
         thetempfile = os.path.join(tempfiles,date_time+".readings")
         
         with open(thetempfile, 'w') as temps:
-            temps.write(results)
+            temps.write(results[-1])
         temps.close()
-        compare = results.splitlines()
+        results.pop(-1)
         input("To take notes, just enter them on the line underneath the verse..press enter to continue")
         os.system('%s %s' % (os.environ['EDITOR'], thetempfile))
         with open(thetempfile, 'r') as temps:
-            compare2 = temps.readlines()
+            compare = temps.readlines()
         os.remove(thetempfile)
-        add_to_notes(compare_verse_lines(compare,compare2))
+        add_to_notes(compare_verse_lines(compare,results,oldnotes=args.notes))
         print("Good bye!")
-        
+    
         
         
     elif args.verse != None:
         grab_module()
         open_bible()
-        result = compile_verse_text(args.verse[0], args.verse[1])
+        argx = args.verse.split('@')
+        result = compile_verse_text(argx[0], argx[1], versenumbers=True, versenotes=args.notes)
         print(result)
+        print(result[-1])
         config = configparser.ConfigParser()
         if args.take_notes:
+            now = datetime.now()
+            date_time = now.strftime("%d-%m-%Y,%H-%M-%S")
             if os.path.exists(heathennotes):
                 config.read(heathennotes)
-            chapterverse = args.verse[1].replace(':','_')
-            bookver = version.lower()+"-"+args.verse[0]
-            if (bookver in config) and (chapterverse in config[bookver].keys()):
-                lastnote = config[bookver][chapterverse]
-                note = input("last notes: {}\nnote: ".format(lastnote))
-            else:
-                note = input("note: ")
-            add_to_notes(zip([bookver],[chapterverse],[note]))
+            bookver_chapter_verse = version.lower()+"-"+result[-2]['book']+"-"+str(result[-2]['chapter'])+"_"+str(result[-2]['verses'][0])
+            note = input("note: ")
+            add_to_notes(zip([bookver_chapter_verse],[date_time],[note]))
+    
+    elif args.list != None:
+        grab_module()
+        open_bible()
+        print("wtf")
+        books  = bible.get_structure().get_books()
+        booklist = args.list.split(',')
+        string = ""
+        lastcount = 0
+        for book in booklist:
+            print(book)
+            book = book.strip().rstrip().lower()
+            if book == 'old testament':
+                book = 'ot'
+            if book == 'new testament':
+                book = 'nt'
+            for item in range(0,len(books[book])):
+                string+="\n{}: {}".format(item+1+lastcount, books[book][item].name)
+                count=item
+            lastcount = count
+        pydoc.pager(string)
+            
     
     else:
+        print("""    _     _ _______ _______ _______ _     _ _______ __   _
+    |_____| |______ |_____|    |    |_____| |______ | \  |
+    |     | |______ |     |    |    |     | |______ |  \_|
+    [                   Read Your Bible                  ]  \n\n""")
         parser.print_help()
             
             
