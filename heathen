@@ -59,7 +59,6 @@ def grabnotes_to_verses(verses,chapter,book):
         config.read(heathennotes)
     else:
         return [None,"no notes"]
-    print(verses)
     returndict = {}
     for verse in verses:
         section = version+"-"+book+"-"+str(chapter)+"_"+str(verse)
@@ -149,7 +148,6 @@ def compile_verse_text(bookline,verseline, versenumbers=True, versenotes=False):
                                 string+="\n"+(note)
                         
                 returndictlist.append({'chapter':chapter, 'verses':verses, 'book':book, 'plain':returnresults, 'notes':returnnotes, 'string':string })
-                print(verses)
             except:
                 string+="\n\nTried to grab verses that didnt exist, or error in name:{} {}:{}-{}\n\n".format(book,chapter,verses[0],verses[-1])
                 returndictlist.append({'chapter':None, 'verse':None, 'book':None, 'plain':None, 'notes':returnnotes, 'string':None })
@@ -318,8 +316,7 @@ def heathen_first_run(handlingfunction):
         pyrepoz.install_module('drc.conf-drc')
         version = 'drc.conf-drc'
         heathenconf['MAIN'] = { 'swordpath':biblepath, 'version':version, 'repo management':'y' }
-        for key in heathenconf['MAIN'].keys():
-            print(key)
+        
         
     with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.heathen'),'w') as conf2:
         heathenconf.write(conf2)
@@ -491,7 +488,6 @@ if __name__ == '__main__':
         open_bible()
         argx = args.verse.split('@')
         result = compile_verse_text(argx[0], argx[1], versenumbers=True, versenotes=args.notes)
-        print(result)
         print(result[-1])
         config = configparser.ConfigParser()
         if args.take_notes:
@@ -506,13 +502,11 @@ if __name__ == '__main__':
     elif args.list != None:
         grab_module()
         open_bible()
-        print("wtf")
         books  = bible.get_structure().get_books()
         booklist = args.list.split(',')
         string = ""
         lastcount = 0
         for book in booklist:
-            print(book)
             book = book.strip().rstrip().lower()
             if book == 'old testament':
                 book = 'ot'
