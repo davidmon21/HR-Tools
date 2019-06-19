@@ -32,8 +32,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Grab bible verses!')
 
-    verse_help = "Display verse: book chapter:verse(s)\n {} --verse john 3:16-+\n+ is basically * function.".format(parser.prog)
-    reader_help = "Display chapter or verses in editor:\nbook chapter:verse(s)(-chapter):verse(s)\n {} --verse john 3-3".format(parser.prog)
+    verse_help = "Display verse: book chapter:verse(s)\n {} --verse john@3:16-+\n+ is basically * function.".format(parser.prog)
+    reader_help = "Display chapter or verses in editor:\nbook chapter:verse(s)(-chapter):verse(s)\n {} --reader john@3:1-+".format(parser.prog)
 
     parser.add_argument("--verse", "-v", help=verse_help, nargs='?', default=None)
     parser.add_argument("--reader", "-r", help=reader_help, nargs='?', default=None)
