@@ -1,325 +1,327 @@
-#!/bin/python3
+#!/usr/local/bin/python3.6
 import os
 import random
 import argparse
-import pysword_repo
+import heathen
+
+# ~ import pysword_repo
 import configparser
-from datetime import datetime
+#from datetime import datetime
 import pydoc
-import re
+# ~ import re
 
-try:
-    from pysword.modules import SwordModules
-    from pysword.bible import SwordBible
-    import pysword 
-except:
-    print("You are missing pysword, to install: pip install [--user] pysword\nOr check your repository")
-    exit(1)
+# ~ try:
+    # ~ from pysword.modules import SwordModules
+    # ~ from pysword.bible import SwordBible
+    # ~ import pysword
+# ~ except:
+    # ~ print("You are missing pysword, to install: pip install [--user] pysword\nOr check your repository")
+    # ~ exit(1)
 
-biblepath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles")
-heathennotes = os.path.join(biblepath,".heathennotes")
-tempfiles =  os.path.join(biblepath,".tempfiles")
-version = "drc"
-thebiblepath = ""
-bible = None
+# ~ biblepath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles")
+# ~ heathennotes = os.path.join(biblepath,".heathennotes")
+# ~ tempfiles =  os.path.join(biblepath,".tempfiles")
+# ~ version = "drc"
+# ~ thebiblepath = ""
+# ~ bible = None
 
 
-def open_bible():
-    global bible
-    checkeroo = thebiblepath.rsplit('.',1)
-    if len(checkeroo) > 1:
-        if checkeroo[1] == "zip":
-            modules = SwordModules(thebiblepath)
-            modules.parse_modules()
-            bible = modules.get_bible_from_module(version.upper())
-        else:
-            bible = SwordBible(thebiblepath)
-    else:
-        bible = SwordBible(thebiblepath)
+# ~ def open_bible():
+    # ~ global bible
+    # ~ checkeroo = thebiblepath.rsplit('.',1)
+    # ~ if len(checkeroo) > 1:
+        # ~ if checkeroo[1] == "zip":
+            # ~ modules = SwordModules(thebiblepath)
+            # ~ modules.parse_modules()
+            # ~ bible = modules.get_bible_from_module(version.upper())
+        # ~ else:
+            # ~ bible = SwordBible(thebiblepath)
+    # ~ else:
+        # ~ bible = SwordBible(thebiblepath)
 
-def add_verse_numbers(versenumbers,verselines):
-    verses = versenumbers['verses']
-    chapter = versenumbers['chapter']
-    book = versenumbers['book']
-    returnlist = []
-    temp = list(verses)
-    if (int(verses[0]) == 1):
-        returnlist.append([{'verse':temp[0], 'chapter':chapter,'book':book}, verselines.pop(0)])
-        temp.pop(0)
-    
-    lines = zip(temp,verselines)
-    for number,verse in lines: returnlist.append([{'verse':number, 'chapter':chapter,'book':book},"\n{}: ".format(number)+verse])
-    return returnlist
-    
-    strip().rstrip().lower()
+# ~ def add_verse_numbers(versenumbers,verselines):
+    # ~ verses = versenumbers['verses']
+    # ~ chapter = versenumbers['chapter']
+    # ~ book = versenumbers['book']
+    # ~ returnlist = []
+    # ~ temp = list(verses)
+    # ~ if (int(verses[0]) == 1):
+        # ~ returnlist.append([{'verse':temp[0], 'chapter':chapter,'book':book}, verselines.pop(0)])
+        # ~ temp.pop(0)
 
-def grabnotes_to_verses(verses,chapter,book):
-    config = configparser.ConfigParser()
-    if os.path.exists(heathennotes):
-        config.read(heathennotes)
-    else:
-        return [None,"no notes"]
-    returndict = {}
-    for verse in verses:
-        section = version+"-"+book+"-"+str(chapter)+"_"+str(verse)
-        if section in config.keys():
-            returnnotes=[]
-            for notes in config[section].keys():
-                returnnotes.append(config[section][notes])
-            returndict[section]=returnnotes
-    
-    return returndict
-                
-                    
-            
+    # ~ lines = zip(temp,verselines)
+    # ~ for number,verse in lines: returnlist.append([{'verse':number, 'chapter':chapter,'book':book},"\n{}: ".format(number)+verse])
+    # ~ return returnlist
 
-def compile_verse_text(bookline,verseline, versenumbers=True, versenotes=False):
-    grab_module()
-    outputer = []    
-    books = bookline.split(',')
-    topparts = verseline.split(',')
-    returndictlist = []
-    #string=[]
-    string=""
-    if len(books) == 1 and len(topparts) != 1:
-        books = books*len(topparts)
-    if len(topparts) == 1 and len(books) != 1:
-        topparts = topparts*len(books)
-    thedict = zip(books,topparts)
-    for book,part in thedict:
-        parts = part.split('-')
-        
-        chapter = parts[0]
-        
-        if ':' in str(parts[0]):
-            parts2 = parts[0].split(':')
-            versespieces = part.split(':')[1]
-            chapter = int(parts2[0])
-            parts = versespieces.split('-')
-            if len(parts) > 1:
-                verse2 = parts[1]
-                verse1 = int(parts[0])
-                if verse2 == "+":
-                    verse2 = bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1]
-                verse2 = int(verse2)
-                outputer.append([chapter, list(range(verse1,verse2+1))])
-                
-            else:
-                outputer.append([chapter, [versespieces]])
-                
-            
-        else:
-            if parts[0] == '+':
-                for chapter in range(1,bible.get_structure().find_book(book)[1].num_chapters+1):
-                    verse2 = list(range(1,int(bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1])+1))
-                    outputer.append([int(chapter), verse2])
-            else:
-                verse2 = list(range(1,int(bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1])+1))
-                outputer.append([int(chapter), verse2])
-        returnnotes = []
-        for part in outputer:
-            chapter=part[0]
-            verses=part[1]
-            
-            if verses[0] == '+':
-                verses = list(range(1,bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1]))
-            preserve = list(verses)
-            try:
-                verses[0] = int(verses[0])
-                results = bible.get(books=[book], chapters=[int(chapter)], verses=verses).splitlines()
-                returnresults = list(results)
-                if versenumbers:
-                    results = add_verse_numbers({'verses':verses, 'chapter':chapter, 'book':book}, results)
-                if versenotes and os.path.exists(heathennotes):
-                    notes = grabnotes_to_verses(preserve, chapter, book)
-                    returnnotes = dict(notes)
-                else: 
-                    returnnotes = {}
-                    notes = {}
-                string+="\n\n{}, {}, {}\n\n".format(version.upper(), book.title(), chapter)
-                while len(results)!= 0:
-                    currentresult = results.pop(0)
-                    currentverse = currentresult[0]['verse']
-                    string+=currentresult[1]
-                    if versenotes:
-                        section = "{}-{}-{}_{}".format(version.lower(),book.lower(),chapter,currentverse)
-                        if section in notes:
-                            for note in notes[section]:
-                                string+="\n"+(note)
-                        
-                returndictlist.append({'chapter':chapter, 'verses':verses, 'book':book, 'plain':returnresults, 'notes':returnnotes, 'string':string })
-            except:
-                string+="\n\nTried to grab verses that didnt exist, or error in name:{} {}:{}-{}\n\n".format(book,chapter,verses[0],verses[-1])
-                returndictlist.append({'chapter':None, 'verse':None, 'book':None, 'plain':None, 'notes':returnnotes, 'string':None })
-            
-        outputer = []
-    returndictlist.append(string)
-    return returndictlist
+    # ~ strip().rstrip().lower()
 
-def grab_module():
-    global thebiblepath
-    global version
-    v1 = args.version[0].lower()
-    modules = pyrepoz.find_module(v1, installed=True)
-    if len(modules) == 1:
-        installfiles = modules[0][1]['installed files'].split("## ")
-        installfiles.remove("")
-        if len(installfiles) == 1:
-            thebiblepath = installfiles[0]
-        else:
-            thebiblepath = os.path.dirname(installfiles[0])
-        version = modules[0][1]['name'].strip('[]')
-    else:
-        print("You need a bible for what you are trying to do, maybe install one with -a")
-        exit(1)
+# ~ def grabnotes_to_verses(verses,chapter,book):
+    # ~ config = configparser.ConfigParser()
+    # ~ if os.path.exists(heathennotes):
+        # ~ config.read(heathennotes)
+    # ~ else:
+        # ~ return [None,"no notes"]
+    # ~ returndict = {}
+    # ~ for verse in verses:
+        # ~ section = version+"-"+book+"-"+str(chapter)+"_"+str(verse)
+        # ~ if section in config.keys():
+            # ~ returnnotes=[]
+            # ~ for notes in config[section].keys():
+                # ~ returnnotes.append(config[section][notes])
+            # ~ returndict[section]=returnnotes
 
-def add_to_notes(bookver_notes):
-    config = configparser.ConfigParser()
-    if os.path.exists(heathennotes):
-        config.read(heathennotes)
-    for bookver_chapter_verse, newkey, note in bookver_notes:
-        if bookver_chapter_verse not in config.keys():
-            config[bookver_chapter_verse] = {}
-        elif newkey in config[bookver_chapter_verse] and not note.isspace():
-            lastnote = config[bookver_chapter_verse][newkey]
-            note=note+" "+lastnote
-            del config[bookver_chapter_verse][newkey]
-        config[bookver_chapter_verse][newkey] = note
-    with open(heathennotes, 'w') as conf:
-        config.write(conf)
+    # ~ return returndict
 
-def compare_verse_lines(compare,results,linenumbers=True,oldnotes=False):
-    try:
-        compare.remove("")
-    except: pass
-    try:
-        compare.remove("\n")
-    except: pass
-    try:
-        compare.remove(" ")
-    except: pass
-    
-    result = results.pop(0)
-    verse = result['verses'][0]
-    chapter = result['chapter']
-    book = result['book']
-    lowerversion = version.lower()
-    bookver_chapter_verse = "{}-{}-{}_{}".format(lowerversion,book,chapter,verse)
-    date_time = now.strftime("%d-%m-%Y,%H-%M-%S")
-    notes = result['notes']
-    newnotes=[]
-    newkeys=[]
-    thesections=[]
-    newnote=""
-    
-    change_over = False
-    while len(compare) != 0:
-        go_on = True
-        line = compare.pop(0)
-        if change_over:
-            bookver_chapter_verse = "{}-{}-{}_{}".format(lowerversion, book, chapter, verse)
-            change_over = False
-            notes = result['notes']
-        
-        if linenumbers:
-            if re.match('[0-9]{1,3}:',line):
-                line = line.split(':',1)[1]
-        
-        line = line.strip().rstrip()
-        if len(result['plain']) != 0:
-            if result['plain'][0] == line:
-                result['plain'].pop(0)
-                if len(result['verses']) != 0:
-                    verse = result['verses'].pop(0)
-                go_on = False
-                change_over = True
-        
-        elif len(results) != 0:
-            #lastverse = verse
-            result = results.pop(0)
-            verse = result['verses'][0]
-            chapter = result['chapter']
-            book = result['book']
-            
-        
-        if line.lower() == version+", "+book+", "+str(chapter):
-            go_on =  False
-            change_over = False
-        
-        if oldnotes and go_on != False:
-            if bookver_chapter_verse in notes:
-                if len(notes[bookver_chapter_verse]) != 0:
-                    if line in notes[bookver_chapter_verse]:
-                        notes[bookver_chapter_verse].remove(line)
-                        go_on = False
-                change_over=False
-        
-        if go_on:
-            change_over = False
-            if not line.strip().rstrip().isspace() and (line != ""):
-                newnotes.append(line.strip().rstrip())
-                thesections.append(bookver_chapter_verse)
-            
 
-    newkeys = [date_time]*len(newnotes)
-    return zip(thesections, newkeys, newnotes)
 
-def grab_and_open():
-    try:
-        grab_module()
-        open_bible()
-    except:
-        response = input("The bible version you are looking for, you do not have.\nWould you like to download?(y/n): ")
-        if 'y' in response:
-            version = install_the_module()
-            grab_module()
-            open_bible()
-        else:
-            exit(1)
 
-def heathen_first_run(handlingfunction):
-    heathenconf = configparser.ConfigParser()
-    print("Welcome to heathen!")
-    answer = handlingfunction("Do you have an existing sword path?(y/n)").lower()
-    
-    if 'y' in answer:
-        answer = handlingfunction("Enter your sword directory path: ")
-        biblepath = answer.strip().rstrip()
-        
-        
-        pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
-        
-        answer = handlingfunction("Would you like heathen to manage your repo?(y/n): ")
-        if 'y' in answer:
-            installedmodules = pyrepoz.bootstrap_ibm()
-            repo_management = 'y'
-        elif 'n' in answer:
-            installedmodules = pyrepoz.find_installed_modules()
-            repo_management = 'n'
-        installedmodules = pyrepoz.list_installed_modules()
-        installedmodslen = range(0,len(installedmodules))
-        for x in installedmodslen:
-            print(str(x+1)+": "+installedmodules[x])
-        answer = handlingfunction("Select module as default version: ")
-        if answer.isdigit and (int(answer)-1) in installedmodslen:
-            version = installedmodules[int(answer)-1][0]
-        heathenconf['MAIN'] = {'swordpath':biblepath, 'version':version, 'repo management':repo_management }
-        
-    elif 'n' in answer:
-        biblepath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles")
-        if not os.path.exists(biblepath):
-            os.makedirs(biblepath)
-        pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
-        pyrepoz.initiate_repo()
-        pyrepoz.update_repo_list()
-        pyrepoz.download_repos()
-        pyrepoz.install_module('drc.conf-drc')
-        version = 'drc.conf-drc'
-        heathenconf['MAIN'] = { 'swordpath':biblepath, 'version':version, 'repo management':'y' }
-        
-        
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.heathen'),'w') as conf2:
-        heathenconf.write(conf2)
+# ~ def compile_verse_text(bookline,verseline, versenumbers=True, versenotes=False):
+    # ~ grab_module()
+    # ~ outputer = []
+    # ~ books = bookline.split(',')
+    # ~ topparts = verseline.split(',')
+    # ~ returndictlist = []
+    # ~ #string=[]
+    # ~ string=""
+    # ~ if len(books) == 1 and len(topparts) != 1:
+        # ~ books = books*len(topparts)
+    # ~ if len(topparts) == 1 and len(books) != 1:
+        # ~ topparts = topparts*len(books)
+    # ~ thedict = zip(books,topparts)
+    # ~ for book,part in thedict:
+        # ~ parts = part.split('-')
+
+        # ~ chapter = parts[0]
+
+        # ~ if ':' in str(parts[0]):
+            # ~ parts2 = parts[0].split(':')
+            # ~ versespieces = part.split(':')[1]
+            # ~ chapter = int(parts2[0])
+            # ~ parts = versespieces.split('-')
+            # ~ if len(parts) > 1:
+                # ~ verse2 = parts[1]
+                # ~ verse1 = int(parts[0])
+                # ~ if verse2 == "+":
+                    # ~ verse2 = bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1]
+                # ~ verse2 = int(verse2)
+                # ~ outputer.append([chapter, list(range(verse1,verse2+1))])
+
+            # ~ else:
+                # ~ outputer.append([chapter, [versespieces]])
+
+
+        # ~ else:
+            # ~ if parts[0] == '+':
+                # ~ for chapter in range(1,bible.get_structure().find_book(book)[1].num_chapters+1):
+                    # ~ verse2 = list(range(1,int(bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1])+1))
+                    # ~ outputer.append([int(chapter), verse2])
+            # ~ else:
+                # ~ verse2 = list(range(1,int(bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1])+1))
+                # ~ outputer.append([int(chapter), verse2])
+        # ~ returnnotes = []
+        # ~ for part in outputer:
+            # ~ chapter=part[0]
+            # ~ verses=part[1]
+
+            # ~ if verses[0] == '+':
+                # ~ verses = list(range(1,bible.get_structure().find_book(book)[1].chapter_lengths[chapter-1]))
+            # ~ preserve = list(verses)
+            # ~ try:
+                # ~ verses[0] = int(verses[0])
+                # ~ results = bible.get(books=[book], chapters=[int(chapter)], verses=verses).splitlines()
+                # ~ returnresults = list(results)
+                # ~ if versenumbers:
+                    # ~ results = add_verse_numbers({'verses':verses, 'chapter':chapter, 'book':book}, results)
+                # ~ if versenotes and os.path.exists(heathennotes):
+                    # ~ notes = grabnotes_to_verses(preserve, chapter, book)
+                    # ~ returnnotes = dict(notes)
+                # ~ else:
+                    # ~ returnnotes = {}
+                    # ~ notes = {}
+                # ~ string+="\n\n{}, {}, {}\n\n".format(version.upper(), book.title(), chapter)
+                # ~ while len(results)!= 0:
+                    # ~ currentresult = results.pop(0)
+                    # ~ currentverse = currentresult[0]['verse']
+                    # ~ string+=currentresult[1]
+                    # ~ if versenotes:
+                        # ~ section = "{}-{}-{}_{}".format(version.lower(),book.lower(),chapter,currentverse)
+                        # ~ if section in notes:
+                            # ~ for note in notes[section]:
+                                # ~ string+="\n"+(note)
+
+                # ~ returndictlist.append({'chapter':chapter, 'verses':verses, 'book':book, 'plain':returnresults, 'notes':returnnotes, 'string':string })
+            # ~ except:
+                # ~ string+="\n\nTried to grab verses that didnt exist, or error in name:{} {}:{}-{}\n\n".format(book,chapter,verses[0],verses[-1])
+                # ~ returndictlist.append({'chapter':None, 'verse':None, 'book':None, 'plain':None, 'notes':returnnotes, 'string':None })
+
+        # ~ outputer = []
+    # ~ returndictlist.append(string)
+    # ~ return returndictlist
+
+# ~ def grab_module():
+    # ~ global thebiblepath
+    # ~ global version
+    # ~ v1 = args.version[0].lower()
+    # ~ modules = pyrepoz.find_module(v1, installed=True)
+    # ~ if len(modules) == 1:
+        # ~ installfiles = modules[0][1]['installed files'].split("## ")
+        # ~ installfiles.remove("")
+        # ~ if len(installfiles) == 1:
+            # ~ thebiblepath = installfiles[0]
+        # ~ else:
+            # ~ thebiblepath = os.path.dirname(installfiles[0])
+        # ~ version = modules[0][1]['name'].strip('[]')
+    # ~ else:
+        # ~ print("You need a bible for what you are trying to do, maybe install one with -a")
+        # ~ exit(1)
+
+# ~ def add_to_notes(bookver_notes):
+    # ~ config = configparser.ConfigParser()
+    # ~ if os.path.exists(heathennotes):
+        # ~ config.read(heathennotes)
+    # ~ for bookver_chapter_verse, newkey, note in bookver_notes:
+        # ~ if bookver_chapter_verse not in config.keys():
+            # ~ config[bookver_chapter_verse] = {}
+        # ~ elif newkey in config[bookver_chapter_verse] and not note.isspace():
+            # ~ lastnote = config[bookver_chapter_verse][newkey]
+            # ~ note=note+" "+lastnote
+            # ~ del config[bookver_chapter_verse][newkey]
+        # ~ config[bookver_chapter_verse][newkey] = note
+    # ~ with open(heathennotes, 'w') as conf:
+        # ~ config.write(conf)
+
+# ~ def compare_verse_lines(compare,results,linenumbers=True,oldnotes=False):
+    # ~ try:
+        # ~ compare.remove("")
+    # ~ except: pass
+    # ~ try:
+        # ~ compare.remove("\n")
+    # ~ except: pass
+    # ~ try:
+        # ~ compare.remove(" ")
+    # ~ except: pass
+
+    # ~ result = results.pop(0)
+    # ~ verse = result['verses'][0]
+    # ~ chapter = result['chapter']
+    # ~ book = result['book']
+    # ~ lowerversion = version.lower()
+    # ~ bookver_chapter_verse = "{}-{}-{}_{}".format(lowerversion,book,chapter,verse)
+    # ~ date_time = now.strftime("%d-%m-%Y,%H-%M-%S")
+    # ~ notes = result['notes']
+    # ~ newnotes=[]
+    # ~ newkeys=[]
+    # ~ thesections=[]
+    # ~ newnote=""
+
+    # ~ change_over = False
+    # ~ while len(compare) != 0:
+        # ~ go_on = True
+        # ~ line = compare.pop(0)
+        # ~ if change_over:
+            # ~ bookver_chapter_verse = "{}-{}-{}_{}".format(lowerversion, book, chapter, verse)
+            # ~ change_over = False
+            # ~ notes = result['notes']
+
+        # ~ if linenumbers:
+            # ~ if re.match('[0-9]{1,3}:',line):
+                # ~ line = line.split(':',1)[1]
+
+        # ~ line = line.strip().rstrip()
+        # ~ if len(result['plain']) != 0:
+            # ~ if result['plain'][0] == line:
+                # ~ result['plain'].pop(0)
+                # ~ if len(result['verses']) != 0:
+                    # ~ verse = result['verses'].pop(0)
+                # ~ go_on = False
+                # ~ change_over = True
+
+        # ~ elif len(results) != 0:
+            # ~ #lastverse = verse
+            # ~ result = results.pop(0)
+            # ~ verse = result['verses'][0]
+            # ~ chapter = result['chapter']
+            # ~ book = result['book']
+
+
+        # ~ if line.lower() == version+", "+book+", "+str(chapter):
+            # ~ go_on =  False
+            # ~ change_over = False
+
+        # ~ if oldnotes and go_on != False:
+            # ~ if bookver_chapter_verse in notes:
+                # ~ if len(notes[bookver_chapter_verse]) != 0:
+                    # ~ if line in notes[bookver_chapter_verse]:
+                        # ~ notes[bookver_chapter_verse].remove(line)
+                        # ~ go_on = False
+                # ~ change_over=False
+
+        # ~ if go_on:
+            # ~ change_over = False
+            # ~ if not line.strip().rstrip().isspace() and (line != ""):
+                # ~ newnotes.append(line.strip().rstrip())
+                # ~ thesections.append(bookver_chapter_verse)
+
+
+    # ~ newkeys = [date_time]*len(newnotes)
+    # ~ return zip(thesections, newkeys, newnotes)
+
+# ~ def grab_and_open():
+    # ~ try:
+        # ~ grab_module()
+        # ~ open_bible()
+    # ~ except:
+        # ~ response = input("The bible version you are looking for, you do not have.\nWould you like to download?(y/n): ")
+        # ~ if 'y' in response:
+            # ~ version = install_the_module()
+            # ~ grab_module()
+            # ~ open_bible()
+        # ~ else:
+            # ~ exit(1)
+
+# ~ def heathen_first_run(handlingfunction):
+    # ~ heathenconf = configparser.ConfigParser()
+    # ~ print("Welcome to heathen!")
+    # ~ answer = handlingfunction("Do you have an existing sword path?(y/n)").lower()
+
+    # ~ if 'y' in answer:
+        # ~ answer = handlingfunction("Enter your sword directory path: ")
+        # ~ biblepath = answer.strip().rstrip()
+
+
+        # ~ pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
+
+        # ~ answer = handlingfunction("Would you like heathen to manage your repo?(y/n): ")
+        # ~ if 'y' in answer:
+            # ~ installedmodules = pyrepoz.bootstrap_ibm()
+            # ~ repo_management = 'y'
+        # ~ elif 'n' in answer:
+            # ~ installedmodules = pyrepoz.find_installed_modules()
+            # ~ repo_management = 'n'
+        # ~ installedmodules = pyrepoz.list_installed_modules()
+        # ~ installedmodslen = range(0,len(installedmodules))
+        # ~ for x in installedmodslen:
+            # ~ print(str(x+1)+": "+installedmodules[x])
+        # ~ answer = handlingfunction("Select module as default version: ")
+        # ~ if answer.isdigit and (int(answer)-1) in installedmodslen:
+            # ~ version = installedmodules[int(answer)-1][0]
+        # ~ heathenconf['MAIN'] = {'swordpath':biblepath, 'version':version, 'repo management':repo_management }
+
+    # ~ elif 'n' in answer:
+        # ~ biblepath = os.path.join(os.path.dirname(os.path.realpath(__file__)),".bibles")
+        # ~ if not os.path.exists(biblepath):
+            # ~ os.makedirs(biblepath)
+        # ~ pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
+        # ~ pyrepoz.initiate_repo()
+        # ~ pyrepoz.update_repo_list()
+        # ~ pyrepoz.download_repos()
+        # ~ pyrepoz.install_module('drc.conf-drc')
+        # ~ version = 'drc.conf-drc'
+        # ~ heathenconf['MAIN'] = { 'swordpath':biblepath, 'version':version, 'repo management':'y' }
+
+
+    # ~ with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),'.heathen'),'w') as conf2:
+        # ~ heathenconf.write(conf2)
 
 ###############################################
 #HEATHAN CLI ONLY FUNCTIONS####################
@@ -347,28 +349,29 @@ def list_select(modules,configz):
 
 heathenconfig = os.path.join(os.path.dirname(os.path.realpath(__file__)),'.heathen')
 if __name__ == '__main__':
-    heathenconf = configparser.ConfigParser()
-    if os.path.exists(heathenconfig):
-        heathenconf.read(heathenconfig)
-        
-        biblepath = heathenconf['MAIN']['swordpath']
-        pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
-    else:
-        heathen_first_run(input)
-        pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
-    
+    the_heathen = heathen.Heathen(conf = heathenconfig, handler = input, display = print)
+    # ~ heathenconf = configparser.ConfigParser()
+    # ~ if os.path.exists(heathenconfig):
+        # ~ heathenconf.read(heathenconfig)
+
+        # ~ biblepath = heathenconf['MAIN']['swordpath']
+        # ~ pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
+    # ~ else:
+        # ~ heathen_first_run(input)
+        # ~ pyrepoz = pysword_repo.PyswordRepo(swrdpath=biblepath,repoconf=".heathenrepo")
+
     parser = argparse.ArgumentParser(description='Grab bible verses!')
-    
+
     verse_help = "Display verse: book chapter:verse(s)\n {} --verse john 3:16-+\n+ is basically * function.".format(parser.prog)
     reader_help = "Display chapter or verses in editor:\nbook chapter:verse(s)(-chapter):verse(s)\n {} --verse john 3-3".format(parser.prog)
-    
+
     parser.add_argument("--verse", "-v", help=verse_help, nargs='?', default=None)
     parser.add_argument("--reader", "-r", help=reader_help, nargs='?', default=None)
-    parser.add_argument("--version", "-b", help='Bible version', nargs=1, default=[heathenconf['MAIN']['version'].strip().rstrip().lower()], metavar=("version"))
+    parser.add_argument("--version", "-b", help='Bible version', nargs=1, default=[the_heathen.heathenconf['MAIN']['version'].strip().rstrip().lower()], metavar=("version"))
     parser.add_argument("--take_notes", "-t", help='Record note for verses', action='store_true')
     parser.add_argument("--notes", "-n", help='View verse notes', action='store_true')
     parser.add_argument("--list", "-l", help='List books in module', nargs='?', default=None)
-    
+
     parser.add_argument('--add_module', '-a', nargs=1, default=None, metavar=("module"))
     parser.add_argument('--search_modules', '-s', nargs='?', help="Specify section with -k default is about", default=None, metavar=("string-regex"))
     parser.add_argument('--section', '-k', nargs='?', help="Section to search", default="about", metavar=("sectionname"))
@@ -378,54 +381,54 @@ if __name__ == '__main__':
     parser.add_argument('--sync_repos', '-y', help="Update repositories", action='store_true')
     parser.add_argument("--prefer_zip","-z", help="Prefer zip packages.", action='store_true')
     parser.add_argument("--beta","-beta", help="Access beta.", action='store_true')
-    
-    
+
+
     args = parser.parse_args()
-    
-    version = (args.version[0]).strip().rstrip().lower()
-    check = version.split('-')
+
+    the_heathen.version = (args.version[0]).strip().rstrip().lower()
+    check = the_heathen.version.split('-')
     if len(check) > 1:
-        version = check[1]
-    
+        the_heathen.version = check[1]
+
     if args.add_module != None:
-        isitinstalled = pyrepoz.find_module(args.add_module[0], installed=True)
+        isitinstalled = the_heathen.pyrepoz.find_module(args.add_module[0], installed=True)
         if len(isitinstalled) == 0:
-            modules = pyrepoz.find_module(args.add_module[0])
+            modules = the_heathen.pyrepoz.find_module(args.add_module[0])
             modlen = len(modules)
             if modlen == 1:
-                pyrepoz.install_module(modules[0][0], beta=args.beta, preferzip=args.prefer_zip)
+                the_heathen.pyrepoz.install_module(modules[0][0], beta=args.beta, preferzip=args.prefer_zip)
             elif modlen != 0:
-                pyrepoz.install_module( list_select(modules,pyrepoz.pyrepo_list), beta=args.beta, preferzip=args.prefer_zip)
+                the_heathen.pyrepoz.install_module( list_select(modules,the_heathen.pyrepoz.pyrepo_list), beta=args.beta, preferzip=args.prefer_zip)
         else:
             print("module is installed.")
-    
+
     if args.search_modules != None:
         string=""
-        found = pyrepoz.search_section_module(args.search_modules,args.section)
+        found = the_heathen.pyrepoz.search_section_module(args.search_modules,args.section)
         for item in range(0,len(found)):
             string+="\n{}:{}\n\n{}\n".format(item+1, found[item][0], found[item][1][args.section].replace("\par","").replace("colon",":").replace("percent","%"))
         pydoc.pager(string)
-    
+
     elif args.uninstall_module != None:
-        modules = pyrepoz.find_module(args.uninstall_module[0], installed=True)
+        modules = the_heathen.pyrepoz.find_module(args.uninstall_module[0], installed=True)
         if len(modules) != 0:
             modlen = len(modules)
             if modlen == 1:
-                pyrepoz.uninstall_module(modules[0][0])
+                the_heathen.pyrepoz.uninstall_module(modules[0][0])
             elif modlen != 0:
-                pyrepoz.uninstall_module(list_select(modules,pyrepoz.pyrepo_list+".installed"))
+                the_heathen.pyrepoz.uninstall_module(list_select(modules,the_heathen.pyrepoz.pyrepo_list+".installed"))
         else:
             print("module isnt installed")
     elif args.list_installed:
-        reeps = pyrepoz.list_installed_modules()
+        reeps = the_heathen.pyrepoz.list_installed_modules()
         for item in range(0, len(reeps)):
             print(str(item+1)+": "+reeps[item])
-            
+
     elif args.upgrade_modules:
         if args.sync_repos:
-            pyrepoz.update_repo_list()
-            pyrepoz.download_repos()
-        upgradable = pyrepoz.update_modules_list(uptobeta=args.beta)
+            the_heathen.pyrepoz.update_repo_list()
+            the_heathen.pyrepoz.download_repos()
+        upgradable = the_heathen.pyrepoz.update_modules_list(uptobeta=args.beta)
         if len(upgradable) != 0:
             success=False
             modrange = range(0,len(upgradable))
@@ -436,8 +439,8 @@ if __name__ == '__main__':
             answer = input("upgrade them all?(y/n):")
             if 'y' in answer:
                 for module in upgradable:
-                    pyrepoz.uninstall_module(module)
-                    pyrepoz.install_module(module, beta=args.beta, preferzip=args.preferzip)
+                    the_heathen.pyrepoz.uninstall_module(module)
+                    the_heathen.pyrepoz.install_module(module, beta=args.beta, preferzip=args.preferzip)
             elif 'n' in answer:
                 while not success:
                     print(printstring)
@@ -448,27 +451,25 @@ if __name__ == '__main__':
                         if int(item) not in modrange:
                             success = False
                 for item in items:
-                    pyrepoz.uninstall_module(upgradable[item])
-                    pyrepoz.install(upgradable[item], beta=args.beta, preferzip=args.preferzip)
+                    the_heathen.pyrepoz.uninstall_module(upgradable[item])
+                    the_heathen.pyrepoz.install(upgradable[item], beta=args.beta, preferzip=args.preferzip)
             else:
                 print("Incorrect input.")
-    
+
     elif args.sync_repos:
-        pyrepoz.update_repo_list()
-        pyrepoz.download_repos()
+        the_heathen.pyrepoz.update_repo_list()
+        the_heathen.pyrepoz.download_repos()
 
     elif args.reader != None:
-        grab_and_open()
-        
+        the_heathen.grab_and_open()
+
         argx = args.reader.split('@')
-        results = compile_verse_text(argx[0], argx[1], versenotes=args.notes)
-        
-        if not os.path.exists(tempfiles):
-            os.makedirs(tempfiles)
-        now = datetime.now()
-        date_time = now.strftime("%d-%m-%Y,%H-%M-%S")
-        thetempfile = os.path.join(tempfiles,date_time+".readings")
-        
+        results = the_heathen.compile_verse_text(argx[0], argx[1], versenotes=args.notes)
+        if not os.path.exists(the_heathen.tempfiles):
+            os.makedirs(the_heathen.tempfiles)
+        date_time = the_heathen.now.strftime("%d-%m-%Y,%H-%M-%S")
+        thetempfile = os.path.join(the_heathen.tempfiles,date_time+".readings")
+
         with open(thetempfile, 'w') as temps:
             temps.write(results[-1])
         temps.close()
@@ -478,31 +479,29 @@ if __name__ == '__main__':
         with open(thetempfile, 'r') as temps:
             compare = temps.readlines()
         os.remove(thetempfile)
-        add_to_notes(compare_verse_lines(compare,results,oldnotes=args.notes))
+        the_heathen.add_to_notes(the_heathen.compare_verse_lines(compare,results,oldnotes=args.notes))
         print("Good bye!")
-    
-        
-        
+
+
+
     elif args.verse != None:
-        grab_module()
-        open_bible()
+        the_heathen.grab_module()
+        the_heathen.open_bible()
         argx = args.verse.split('@')
-        result = compile_verse_text(argx[0], argx[1], versenumbers=True, versenotes=args.notes)
+        result = the_heathen.compile_verse_text(argx[0], argx[1], versenumbers=True, versenotes=args.notes)
         print(result[-1])
         config = configparser.ConfigParser()
         if args.take_notes:
             now = datetime.now()
             date_time = now.strftime("%d-%m-%Y,%H-%M-%S")
-            if os.path.exists(heathennotes):
-                config.read(heathennotes)
-            bookver_chapter_verse = version.lower()+"-"+result[-2]['book']+"-"+str(result[-2]['chapter'])+"_"+str(result[-2]['verses'][0])
+            bookver_chapter_verse = the_heathen.version.lower()+"-"+result[-2]['book']+"-"+str(result[-2]['chapter'])+"_"+str(result[-2]['verses'][0])
             note = input("note: ")
-            add_to_notes(zip([bookver_chapter_verse],[date_time],[note]))
-    
+            the_heathen.add_to_notes(zip([bookver_chapter_verse],[date_time],[note]))
+
     elif args.list != None:
-        grab_module()
-        open_bible()
-        books  = bible.get_structure().get_books()
+        the_heathen.grab_module()
+        the_heathen.open_bible()
+        books  = the_heathen.bible.get_structure().get_books()
         booklist = args.list.split(',')
         string = ""
         lastcount = 0
@@ -517,14 +516,14 @@ if __name__ == '__main__':
                 count=item
             lastcount = count
         pydoc.pager(string)
-            
-    
+
+
     else:
         print("""    _     _ _______ _______ _______ _     _ _______ __   _
     |_____| |______ |_____|    |    |_____| |______ | \  |
     |     | |______ |     |    |    |     | |______ |  \_|
     [                   Read Your Bible                  ]  \n\n""")
         parser.print_help()
-            
-            
+
+
 
